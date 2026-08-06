@@ -1,0 +1,20 @@
+{
+  "name": "PT. BIOLI LESTARI — Sistem Transaksi",
+  "short_name": "Bioli",
+  "description": "Sistem transaksi, stok, riwayat & laporan PT. Bioli Lestari. Berjalan offline (PWA).",
+  "lang": "id",
+  "dir": "ltr",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "prefer_related_applications": false,
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
