@@ -7411,5 +7411,111 @@ body:has(#cvMergeView[style*="flex"]) .bottom-nav{transform:translateY(112%);opa
   else install();
 })();
 </script>
+<style id="v39-css">
+  /* ===== Rincian LK: input manual slim & profesional ===== */
+  #lkDetailContent .lk-me-block {
+    border: none;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    padding: 7px 0;
+    margin: 0;
+    background: transparent;
+  }
+  #lkDetailContent .lk-me-block:last-child { border-bottom: none; }
+  #lkDetailContent .lk-me-label {
+    font-size: 8px;
+    margin-bottom: 4px;
+    letter-spacing: .4px;
+  }
+  #lkDetailContent .lk-me-form { gap: 5px; }
+  #lkDetailContent .lk-me-note-in { height: 32px; font-size: 10px; }
+  #lkDetailContent .lk-me-amt-in { height: 32px; font-size: 11px; flex: 0 0 100px; }
+  #lkDetailContent .lk-me-add { height: 32px; padding: 0 12px; font-size: 9.5px; border-radius: 8px; }
+  /* hilangkan kotak keterangan ga penting */
+  #lkDetailContent .lk-me-empty { display: none !important; }
+  #lkDetailContent .lk-me-list { margin-top: 4px; }
+  #lkDetailContent .lk-me-item { padding: 5px 0; }
+  #lkDetailContent .lk-me-item .lk-me-amt { font-size: 11px; min-width: 88px; }
+  #lkDetailContent .lk-me-item .lk-me-acts button { width: 24px; height: 24px; }
+</style>
+
+<script>
+/* ==========================================================
+   PATCH v39:
+   1) "Pilih" & "+ LK" → menu dropdown "Aksi ▾" (hemat layar)
+   2) Input manual Rincian LK slim (CSS di atas)
+   ========================================================== */
+(function() {
+  function install() {
+    var pilih = document.getElementById('btnMultiPayToggle');
+    if (!pilih || typeof window.openLKQuick !== 'function') {
+      setTimeout(install, 150);
+      return;
+    }
+    if (window.__v39) return;
+    window.__v39 = true;
+
+    var lk = document.getElementById('btnAddBawaanLK');
+
+    /* ---- tombol Aksi + dropdown ---- */
+    if (!document.getElementById('btnHistActions')) {
+      var wrap = document.createElement('div');
+      wrap.className = 'filter-dropdown-wrap';
+      wrap.style.flexShrink = '0';
+      wrap.innerHTML =
+        '<button id="btnHistActions" class="btn-hist-action"><svg><use href="#icon-menu"/></svg> Aksi <svg class="caret"><use href="#icon-chevron-down"/></svg></button>' +
+        '<div id="histActionsMenu" class="filter-dropdown-menu"></div>';
+      pilih.insertAdjacentElement('afterend', wrap);
+    }
+
+    var btn = document.getElementById('btnHistActions');
+    var menu = document.getElementById('histActionsMenu');
+
+    btn.onclick = function() {
+      menu.innerHTML =
+        '<div class="tm-label">Aksi Cepat</div>' +
+        '<div class="dropdown-item" id="actPilih"><svg><use href="#icon-check"/></svg> Pilih Nota (Multi-Bayar)' +
+        (multiPayMode ? ' <span style="margin-left:auto;font-size:8px;font-weight:800;color:var(--success)">AKTIF</span>' : '') +
+        '</div>' +
+        '<div class="tm-divider"></div>' +
+        '<div class="dropdown-item" id="actLK"><svg><use href="#icon-plus"/></svg> Bawaan Luar Kota (Manual)</div>';
+      menu.classList.toggle('open');
+      document.getElementById('actPilih').onclick = function() {
+        menu.classList.remove('open');
+        toggleMultiPayMode();
+      };
+      document.getElementById('actLK').onclick = function() {
+        menu.classList.remove('open');
+        openLKQuick();
+      };
+    };
+
+    /* ---- sembunyikan tombol lama ---- */
+    pilih.style.display = 'none';
+    if (lk) lk.style.display = 'none';
+
+    /* ---- badge di tombol Aksi saat mode pilih aktif ---- */
+    function syncBadge() {
+      btn.classList.toggle('has-value', !!multiPayMode);
+    }
+    if (typeof window.enterMultiPayMode === 'function' && !window.enterMultiPayMode._v39) {
+      var oE = window.enterMultiPayMode;
+      window.enterMultiPayMode = function() { var r = oE.apply(this, arguments); setTimeout(syncBadge, 0); return r; };
+      window.enterMultiPayMode._v39 = true;
+    }
+    if (typeof window.exitMultiPayMode === 'function' && !window.exitMultiPayMode._v39) {
+      var oX = window.exitMultiPayMode;
+      window.exitMultiPayMode = function() { var r = oX.apply(this, arguments); setTimeout(syncBadge, 0); return r; };
+      window.exitMultiPayMode._v39 = true;
+    }
+    syncBadge();
+
+    try { console.log('[v39] aktif: menu Aksi + LK slim'); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+</script>
 </body>
 </html>
