@@ -5979,6 +5979,307 @@ body:has(#cvMergeView[style*="flex"]) .bottom-nav{transform:translateY(112%);opa
     install();
   }
 })();
+/* ==========================================================
+   PATCH v29: FIX CONVERTER INVOICES
+   - Paste sedikit (1-2 baris) sekarang kebaca
+   - Faktur sisa ONGKIR (OWING kosong) tetap masuk
+   ========================================================== */
+(function() {
+  function isDateCell(s) { return /^\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}$/.test(s); }
+  function isInvCell(s)  { return /^[A-Z]{1,4}-?\d+\/[A-Z0-9]+$/i.test(s); }
+  function isMoneyCell(s){ return /^rp\s?[\d.,]/i.test(s) || /^[\d.,]+$/.test(s); }
+
+  function pushRow(map, inv, desc, val) {
+    map[inv].rows.push({ desc: desc, qty: 1, price: val, total: val, cat: 'UMUM' });
+    map[inv].subTotal += val;
+  }
+
+  function finalize(map, totalLines) {
+    var rows = Object.keys(map).map(function(k, n) {
+      var inv = map[k];
+      inv.grandTotal = inv.subTotal - inv.discTotal + inv.shippingCost;
+      inv.finalGrandTotal = inv.grandTotal;
+      var bad = inv.rows.length === 0;
+      return Object.assign({}, inv, { _line: n + 1, _bad: bad, _warn: bad ? 'tanpa item' : '' });
+    });
+    return { rows: rows, errors: [], total: totalLines };
+  }
+
+  /* ---- parser DENGAN header (min 2 baris, bukan 5) ---- */
+  function convHeader(text, lines, headerIdx, delim) {
+    var H = cvSplit(lines[headerIdx], delim).map(cvNormHead);
+    function findCol(kws) {
+      for (var i = 0; i < H.length; i++)
+        for (var k = 0; k < kws.length; k++)
+          if (H[i].indexOf(kws[k]) >= 0) return i;
+      return -1;
+    }
+    var idxDate = findCol(['DATE', 'TANGGAL', 'TGL']);
+    var idxName = findCol(['NAME', 'NAMA', 'CUSTOMER', 'DEALER']);
+    var idxInv  = findCol(['INVOICE', 'NOTA', 'INV NO']);
+    var idxOwing  = findCol(['OWING', 'TAGIHAN', 'AMOUNT', 'TOTAL', 'SISA']);
+    var idxOngkir = findCol(['ONGKIR', 'SHIPPING', 'FREIGHT']);
+    var idxPaid = findCol(['DIBAYAR', 'PAID']);
+    if (idxInv < 0) return null;
+
+    var map = {}, rowCount = 0;
+    for (var r = headerIdx + 1; r < lines.length; r++) {
+      var cells = cvSplit(lines[r], delim);
+      if (cells.length < 3) continue;
+      var g = function(ix) { return ix >= 0 && ix < cells.length ? String(cells[ix] || '').trim() : ''; };
+      var invStr = g(idxInv);
+      if (!invStr || /invoice|nota/i.test(invStr)) continue;
+
+      var nameStr = g(idxName);
+      var custName = nameStr, custCode = '';
+      var cm = nameStr.match(/^(.+?)\s*\(([^)]+)\)$/);
+      if (cm) { custName = cm[1].trim(); custCode = cm[2].trim(); }
+
+      var owing  = cvParseNum(g(idxOwing));
+      var ongkir = cvParseNum(g(idxOngkir));
+      var paid   = cvParseNum(g(idxPaid));
+
+      if (!map[invStr]) {
+        map[invStr] = {
+          invNo: invStr,
+          date: cvParseDate(g(idxDate)),
+          cust: { code: custCode.toUpperCase(), name: custName.toUpperCase(), tempo: 0, disc: {}, sales: '' },
+          rows: [], subTotal: 0, discTotal: 0, shippingCost: 0,
+          grandTotal: 0, paidAmount: paid || 0, payments: []
+        };
+      }
+
+      if (owing > 0) {
+        // normal: sisa tagihan di OWING (+ ongkir nambah grand total)
+        pushRow(map, invStr, custName || 'ITEM', owing);
+        if (ongkir > 0) map[invStr].shippingCost = ongkir;
+        rowCount++;
+      } else if (ongkir > 0) {
+        // KASUS LU: lunas, sisa ONGKIR → ongkir jadi baris tagihan
+        pushRow(map, invStr, 'ONGKIR', ongkir);
+        rowCount++;
+      }
+    }
+    return finalize(map, rowCount);
+  }
+
+  /* ---- parser TANPA header (paste excel mentah) ---- */
+  function convNoHeader(text) {
+    var delim = cvDetectDelim(text);
+    var lines = String(text).replace(/\r/g, '').split('\n').filter(function(l) { return l.trim(); });
+    var rows = lines.map(function(l) { return cvSplit(l, delim); });
+    var sample = null;
+    for (var i = 0; i < rows.length; i++) if (rows[i].length >= 3) { sample = rows[i]; break; }
+    if (!sample) return null;
+
+    var idxDate = -1, idxInv = -1, idxAmt = -1, idxCust = -1;
+    sample.forEach(function(c, ix) {
+      var s = String(c || '').trim();
+      if (idxDate < 0 && isDateCell(s))  { idxDate = ix; return; }
+      if (idxInv  < 0 && isInvCell(s))   { idxInv  = ix; return; }
+      if (idxAmt  < 0 && isMoneyCell(s)) { idxAmt  = ix; return; }
+    });
+    for (var c2 = 0; c2 < sample.length; c2++)
+      if (c2 !== idxDate && c2 !== idxInv && c2 !== idxAmt) { idxCust = c2; break; }
+    if (idxInv < 0 || idxAmt < 0) return null;
+
+    var map = {}, rowCount = 0;
+    rows.forEach(function(r) {
+      var invStr = String(r[idxInv] || '').trim();
+      var val = cvParseNum(String(r[idxAmt] || ''));
+      var nameStr = idxCust >= 0 ? String(r[idxCust] || '').trim() : '';
+      if (!invStr || val <= 0) return;
+      var custName = nameStr, custCode = '';
+      var cm = nameStr.match(/^(.+?)\s*\(([^)]+)\)$/);
+      if (cm) { custName = cm[1].trim(); custCode = cm[2].trim(); }
+      if (!map[invStr]) {
+        map[invStr] = {
+          invNo: invStr,
+          date: cvParseDate(idxDate >= 0 ? String(r[idxDate] || '') : ''),
+          cust: { code: custCode.toUpperCase(), name: custName.toUpperCase(), tempo: 0, disc: {}, sales: '' },
+          rows: [], subTotal: 0, discTotal: 0, shippingCost: 0, grandTotal: 0, paidAmount: 0, payments: []
+        };
+      }
+      pushRow(map, invStr, custName || 'ITEM', val);
+      rowCount++;
+    });
+    return finalize(map, rows.length);
+  }
+
+  function convFixed(text) {
+    text = (text || '').replace(/^\uFEFF/, '').replace(/\r/g, '');
+    var lines = text.split('\n').filter(function(l) { return l.trim(); });
+    if (lines.length < 2) return { rows: [], errors: [], total: 0 };
+
+    var headerIdx = -1;
+    for (var i = 0; i < Math.min(10, lines.length); i++) {
+      if (lines[i].indexOf('Invoice') >= 0 || lines[i].indexOf('INVOICE') >= 0) { headerIdx = i; break; }
+    }
+
+    var res = null;
+    if (headerIdx >= 0) res = convHeader(text, lines, headerIdx, cvDetectDelim(text));
+    if (res && res.rows.length) return res;
+    res = convNoHeader(text);
+    if (res && res.rows.length) return res;
+    return { rows: [], errors: [], total: 0 };
+  }
+
+  function install() {
+    if (typeof window.cvConvInvoices !== 'function') { setTimeout(install, 100); return; }
+    if (window.cvConvInvoices._v29) return;
+
+    var orig = window.cvConvInvoices;
+    window.cvConvInvoices = function(text) {
+      var res = orig.apply(this, arguments);
+      if (res && res.rows && res.rows.length > 0) return res;  // parser asli sukses → pakai itu
+      return convFixed(text);                                   // kalau nggak, parser fix
+    };
+    window.cvConvInvoices._v29 = true;
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+<style id="v30-css">
+  /* lebarin input nomor biar 6 digit muat */
+  #invNumInput { width: 76px; min-width: 76px; letter-spacing: -.2px; }
+  @media(max-width:480px) { #invNumInput { width: 60px; min-width: 60px; } }
+  @media(max-width:360px) { #invNumInput { width: 56px; min-width: 56px; } }
+</style>
+
+<script>
+/* ==========================================================
+   PATCH v30: NOMOR NOTA 6 DIGIT (000001)
+   - padInvNum 4 → 6 digit
+   - batas max 9999 → 999999
+   ========================================================== */
+(function() {
+  var MAX = 999999;
+
+  function install() {
+    if (typeof window.padInvNum !== 'function') {
+      setTimeout(install, 100);
+      return;
+    }
+    if (window.padInvNum._v30) return;
+
+    /* ---- 1) padding 6 digit (otomatis kepake semua fungsi) ---- */
+    window.padInvNum = function(n) {
+      return String(n).padStart(6, '0');
+    };
+    window.padInvNum._v30 = true;
+
+    /* ---- 2) input manual: batas 999999 ---- */
+    window.onInvNumChange = function() {
+      var inp = document.getElementById('invNumInput');
+      var val = inp.value.trim().toLowerCase();
+
+      for (var i = 0; i < manualInvTriggerCodes.length; i++) {
+        if (val === manualInvTriggerCodes[i]) {
+          if (manualInvMode) {
+            manualInvMode = false; manualInvNumber = '';
+            localStorage.setItem('manualInvMode', 'false');
+            localStorage.removeItem('manualInvNumber');
+            inp.classList.remove('manual-mode');
+            inp.placeholder = '';
+            inp.value = padInvNum((getInvCounter(getCounterTypeForMode(isPiMode ? 'pi' : currentMode)).lastNum || 0) + 1);
+            invUserEdited = false;
+            alertSuccess('Mode otomatis');
+          } else {
+            manualInvMode = true; manualInvNumber = '';
+            localStorage.setItem('manualInvMode', 'true');
+            localStorage.setItem('manualInvNumber', '');
+            inp.classList.add('manual-mode');
+            inp.value = '';
+            inp.placeholder = 'No. Manual...';
+            alertWarning('Mode manual aktif');
+          }
+          return;
+        }
+      }
+
+      if (manualInvMode) {
+        invUserEdited = true;
+        manualInvNumber = inp.value.trim();
+        localStorage.setItem('manualInvNumber', manualInvNumber);
+      } else {
+        var n = parseInt(val) || 1;
+        inp.value = padInvNum(Math.max(1, Math.min(MAX, n)));
+        invUserEdited = true;
+      }
+    };
+
+    /* ---- 3) tombol +/- : batas 999999 ---- */
+    window.invStep = function(d) {
+      var inp = document.getElementById('invNumInput');
+      if (manualInvMode) {
+        manualInvMode = false; manualInvNumber = '';
+        localStorage.setItem('manualInvMode', 'false');
+        localStorage.removeItem('manualInvNumber');
+        inp.classList.remove('manual-mode');
+        inp.placeholder = '';
+        inp.value = padInvNum(Math.max(1, Math.min(MAX, (getInvCounter(getCounterTypeForMode(isPiMode ? 'pi' : currentMode)).lastNum || 0) + 1 + d)));
+        invUserEdited = true;
+        return;
+      }
+      var c = parseInt(inp.value) || 1;
+      inp.value = padInvNum(Math.max(1, Math.min(MAX, c + d)));
+      invUserEdited = true;
+      inp.focus();
+      inp.select();
+    };
+
+    /* ---- 4) consume nomor saat simpan ---- */
+    window.consumeInvNo = function(mode) {
+      var m = mode || (isPiMode ? 'pi' : currentMode);
+      var ct = getCounterTypeForMode(m);
+      var c = getInvCounter(ct);
+      var inp = document.getElementById('invNumInput');
+
+      var requested = null;
+      if (manualInvMode && manualInvNumber) requested = manualInvNumber;
+      else if (invUserEdited) requested = inp.value.trim();
+
+      var full, usedNum = null;
+      if (requested !== null && requested !== '') {
+        var isNum = /^\d+$/.test(requested);
+        var finalStr = isNum ? padInvNum(Math.max(1, Math.min(MAX, parseInt(requested)))) : requested;
+        full = getPrefixForMode(m) + finalStr;
+        if (isInvNoExists(full)) return null;
+        usedNum = isNum ? parseInt(requested) : null;
+      } else {
+        var nn = (c.lastNum || 0) + 1;
+        while (isInvNoExists(getPrefixForMode(m) + padInvNum(nn))) nn++;
+        full = getPrefixForMode(m) + padInvNum(nn);
+        usedNum = nn;
+      }
+
+      if (usedNum !== null && usedNum > (c.lastNum || 0)) {
+        c.lastNum = usedNum;
+        saveInvCounter(ct, c);
+      }
+
+      manualInvMode = false; manualInvNumber = '';
+      localStorage.setItem('manualInvMode', 'false');
+      localStorage.removeItem('manualInvNumber');
+      inp.classList.remove('manual-mode');
+      inp.placeholder = '';
+      inp.value = padInvNum((c.lastNum || 0) + 1);
+      invUserEdited = false;
+      return full;
+    };
+
+    // refresh preview nomor biar langsung 6 digit
+    try { setInvNumPreview(); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install);
+  } else {
+    install();
+  }
+})();
+</script>
 </script>
 </body>
 </html>
