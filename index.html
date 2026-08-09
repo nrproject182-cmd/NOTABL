@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v4.2</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v4.3</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='4.2';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='4.3';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -2636,7 +2636,7 @@ document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){if
       };
     }
   })(WRAP[w])}
-  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v4.2'}catch(e){}
+  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v4.3'}catch(e){}
   try{var sl=document.querySelector('.sp-load');if(sl)sl.textContent='Memuat sistem\u2026'}catch(e){}
   try{repairAll(document.body)}catch(e){}
   setTimeout(function(){try{repairAll(document.body)}catch(e){}},200);
@@ -6440,6 +6440,520 @@ body:has(#cvMergeView[style*="flex"]) .bottom-nav{transform:translateY(112%);opa
   } else {
     install();
   }
+})();
+/* ==========================================================
+   PATCH v32: PELUNASAN FAKTUR LK TERCATAT DI LAPORAN PELUNASAN
+   - Masuk list + summary + share WA pelunasan
+   - Badge "LK OTM / LK PRT" biar kebaca mana yang bawaan
+   - Status LUNAS berdasarkan sisa bawaan (bukan sisa tagihan)
+   ========================================================== */
+(function() {
+  function isLK(tx) { return tx && (tx.region === 'LKOTM' || tx.region === 'LKPRT'); }
+
+  function remFor(tx, ha) {
+    if (isLK(tx) && typeof window.lkPayableRemaining === 'function') {
+      return window.lkPayableRemaining(tx, ha);
+    }
+    return getRemainingBalance(tx, ha);
+  }
+
+  function install() {
+    if (typeof window.renderSettlementList !== 'function') {
+      setTimeout(install, 100);
+      return;
+    }
+    if (window.__v32Done) return;
+    window.__v32Done = true;
+
+    /* ---- 1) computeSettlements: SEMUA region masuk (termasuk LK) ---- */
+    window.computeSettlements = function() {
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+      var out = [];
+      ha.forEach(function(tx) {
+        if (tx.isCancelled || tx.isRetur || tx.isPi || tx.isOrder) return;
+        if (!tx.payments || !tx.payments.length) return;
+        tx.payments.forEach(function(pay, pIdx) {
+          out.push({
+            key: tx.invNo + '#' + pIdx,
+            invNo: tx.invNo,
+            custName: tx.cust ? tx.cust.name : 'Unknown',
+            custCode: tx.cust ? tx.cust.code : '',
+            date: pay.date,
+            amount: pay.amount || 0,
+            cash: pay.cash || 0,
+            transfer: pay.transfer || 0,
+            cmm: pay.cmm || 0,
+            note: pay.note || '',
+            isLK: isLK(tx),
+            isFullSettle: remFor(tx, ha) <= 0
+          });
+        });
+      });
+      return out;
+    };
+
+    /* ---- 2) badge LK di list pelunasan ---- */
+    var oR = window.renderSettlementList;
+    window.renderSettlementList = function() {
+      var r = oR.apply(this, arguments);
+      setTimeout(function() {
+        var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+        var reg = {};
+        ha.forEach(function(t) { reg[t.invNo] = t.region; });
+        document.querySelectorAll('.settle-card').forEach(function(card) {
+          var key = card.getAttribute('data-key') || '';
+          var invNo = key.split('#')[0];
+          var region = reg[invNo];
+          if (region === 'LKOTM' || region === 'LKPRT') {
+            var nameEl = card.querySelector('.settle-cust');
+            if (nameEl && !nameEl.querySelector('.lk-settle-tag')) {
+              var tag = document.createElement('span');
+              tag.className = 'lk-settle-tag';
+              tag.style.cssText = 'margin-left:6px;font-size:7px;font-weight:800;padding:1px 6px;border-radius:4px;background:#dbeafe;color:#1e40af;vertical-align:1px';
+              tag.textContent = region === 'LKOTM' ? 'LK OTM' : 'LK PRT';
+              nameEl.appendChild(tag);
+            }
+          }
+        });
+      }, 0);
+      return r;
+    };
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install);
+  } else {
+    install();
+  }
+})();
+/* ==========================================================
+   PATCH v33 FULL:
+   1) NOTA BATAL → hapus dari history, nomor bisa dipakai lagi
+   2) SHARE PELUNASAN → status (LUNAS)/(TITIP) di belakang nominal
+   3) FILTER STOK → Semua/Tersedia/Habis/Minus + hitungan type
+   ========================================================== */
+(function() {
+  function install() {
+    if (typeof window.cancelTransaction !== 'function' ||
+        typeof window.computeSettlements !== 'function' ||
+        typeof window.renderStockTable !== 'function') {
+      setTimeout(install, 100);
+      return;
+    }
+    if (window.__v33Full) return;
+    window.__v33Full = true;
+
+    /* ============ 1) NOTA BATAL = HAPUS + NOMOR BEBAS ============ */
+    window.cancelTransaction = function(idx) {
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+      var tx = ha[idx];
+      if (!tx) return;
+
+      showDangerConfirm(
+        'Batalkan <b>' + escapeHtml(tx.invNo) + '</b>?<br>' +
+        '<small>• Nota dihapus dari riwayat<br>• Nomor faktur bisa dipakai lagi<br>• Stok barang dikembalikan</small>',
+        function(cf) {
+          if (!cf) return;
+
+          if (!tx.isRetur && !tx.isOrder && !tx.isPi && !tx.isCancelled) {
+            (tx.rows || []).forEach(function(r) {
+              var item = findItemByDesc(r.desc);
+              if (item) {
+                stockData[item.name] = (stockData[item.name] || 0) + r.qty;
+                stockLog.unshift({ item: item.name, type: 'in', qty: r.qty, note: 'Batal: ' + tx.invNo, date: new Date().toISOString() });
+              }
+            });
+            saveStockData();
+          }
+
+          ha.splice(idx, 1);
+          try { localStorage.setItem('txHistory', JSON.stringify(ha)); } catch (e) { alertDanger('Storage penuh!'); }
+
+          closeHistoryDetail();
+          alertSuccess('Nota dibatalkan & dihapus.<br>Nomor <b>' + escapeHtml(tx.invNo) + '</b> bisa dipakai lagi.');
+          loadHistory();
+        }
+      );
+    };
+
+    /* ============ 2) SHARE PELUNASAN + STATUS LUNAS/TITIP ============ */
+    window.shareSettlementsToWA = function() {
+      if (!selectedSettleKeys.size) {
+        alertWarning('Pilih minimal 1 data pelunasan!');
+        return;
+      }
+
+      var all = computeSettlements();
+      var sel = all.filter(function(s) { return selectedSettleKeys.has(s.key); });
+      sel.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+      var byInv = {};
+      ha.forEach(function(t) { byInv[t.invNo] = t; });
+      function statusOf(invNo) {
+        var tx = byInv[invNo];
+        if (!tx) return 'TITIP';
+        var rem = (window.lkPayableRemaining && (tx.region === 'LKOTM' || tx.region === 'LKPRT'))
+          ? window.lkPayableRemaining(tx, ha)
+          : getRemainingBalance(tx, ha);
+        return rem <= 0 ? 'LUNAS' : 'TITIP';
+      }
+
+      var map = {}, order = [];
+      sel.forEach(function(s) {
+        var code = s.custCode || ('__NAME__' + s.custName);
+        if (!map[code]) {
+          map[code] = { name: s.custName, code: s.custCode, rows: [] };
+          order.push(code);
+        }
+        map[code].rows.push(s);
+      });
+
+      var txt = '';
+      var grand = 0;
+
+      order.forEach(function(code, gi) {
+        var g = map[code];
+        var head = g.code ? (g.name + ' (' + g.code + ')') : g.name;
+        if (gi > 0) txt += '\n';
+        txt += '*' + head.toUpperCase() + '*\n';
+
+        var sumAmt = 0, sumCmm = 0;
+        g.rows.forEach(function(r) {
+          var tagihan = (parseFloat(r.amount) || 0) + (parseFloat(r.cmm) || 0);
+          txt += r.invNo + ' = ' + fmtCurrencyFull(tagihan) + ' (' + statusOf(r.invNo) + ')\n';
+          sumAmt += (parseFloat(r.amount) || 0);
+          sumCmm += (parseFloat(r.cmm) || 0);
+        });
+
+        if (sumCmm > 0) txt += '✂ POT CAS / CMM = ' + fmtCurrencyFull(sumCmm) + '\n';
+        txt += '*TOTAL = ' + fmtCurrencyFull(sumAmt) + '*\n';
+        grand += sumAmt;
+      });
+
+      txt += '\n*GRAND TOTAL = ' + fmtCurrencyFull(grand) + '*';
+
+      window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
+    };
+
+    /* ============ 3) FILTER STOK 4 OPSI + HITUNGAN TYPE ============ */
+
+    // hitung stok per status (dipakai dropdown & summary)
+    function stockCounts() {
+      var c = { all: 0, ready: 0, zero: 0, minus: 0 };
+      items.forEach(function(it) {
+        var s = stockData[it.name] || 0;
+        c.all++;
+        if (s > 0) c.ready++;
+        else if (s === 0) c.zero++;
+        else c.minus++;
+      });
+      return c;
+    }
+
+    window.updateStockReadyFilterDropdown = function() {
+      var menu = document.getElementById('stockReadyFilterMenu');
+      var btn = document.getElementById('btnStockReadyFilter');
+      var cur = state.stock.filterReady;
+      var C = '<svg class="caret"><use href="#icon-chevron-down"/></svg>';
+      var c = stockCounts();
+
+      var opts = [
+        { k: 'all',   l: '<svg><use href="#icon-box"/></svg> Semua <span style="margin-left:auto;font-size:8px;font-family:var(--font-mono);color:var(--text-light)">' + c.all + '</span>' },
+        { k: 'ready', l: '<svg><use href="#icon-check-circle"/></svg> Tersedia <span style="margin-left:auto;font-size:8px;font-family:var(--font-mono);color:var(--success)">' + c.ready + ' type</span>' },
+        { k: 'zero',  l: '<svg><use href="#icon-alert"/></svg> Habis <span style="margin-left:auto;font-size:8px;font-family:var(--font-mono);color:var(--warning)">' + c.zero + ' type</span>' },
+        { k: 'minus', l: '<svg><use href="#icon-x-circle"/></svg> Minus <span style="margin-left:auto;font-size:8px;font-family:var(--font-mono);color:var(--danger)">' + c.minus + ' type</span>' }
+      ];
+
+      menu.innerHTML =
+        '<div class="tm-label">Stok: ' + c.ready + ' type ready • ' + c.zero + ' habis • ' + c.minus + ' minus</div>' +
+        opts.map(function(o) {
+          return '<div class="dropdown-item' + (cur === o.k ? ' active' : '') + '" onclick="applyStockReadyFilter(\'' + o.k + '\')">' + o.l + '</div>';
+        }).join('');
+
+      btn.innerHTML =
+        cur === 'all'   ? '<svg><use href="#icon-box"/></svg> Semua ' + C :
+        cur === 'ready' ? '<svg><use href="#icon-check-circle"/></svg> Tersedia ' + C :
+        cur === 'zero'  ? '<svg><use href="#icon-alert"/></svg> Habis ' + C :
+                          '<svg><use href="#icon-x-circle"/></svg> Minus ' + C;
+      btn.classList.toggle('has-value', cur !== 'all');
+    };
+
+    // renderStockTable: tambah filter minus (stok < 0), habis = stok 0
+    window.renderStockTable = function() {
+      var data = items.filter(function(item) {
+        var q = state.stock.search;
+        var ms = !q ||
+          item.name.toLowerCase().indexOf(q) >= 0 ||
+          item.cat.toLowerCase().indexOf(q) >= 0 ||
+          ((item.desc || '').toLowerCase().indexOf(q) >= 0) ||
+          ((item.code || '').toLowerCase().indexOf(q) >= 0) ||
+          ((item.subCat || '').toLowerCase().indexOf(q) >= 0) ||
+          ((item.size || '').toLowerCase().indexOf(q) >= 0);
+        var mc = !state.stock.filterCat || normCat(item.cat) === state.stock.filterCat;
+        var stock = stockData[item.name] || 0;
+        var fr = state.stock.filterReady;
+        var mr = fr === 'ready' ? stock > 0 :
+                 fr === 'zero'  ? stock === 0 :
+                 fr === 'minus' ? stock < 0 : true;
+        return ms && mc && mr;
+      });
+
+      data.sort(function(a, b) { return normCat(a.cat).localeCompare(normCat(b.cat)) || a.name.localeCompare(b.name); });
+
+      var list = document.getElementById('stockList'), infoEl = document.getElementById('stockInfo');
+      if (!data.length) {
+        list.innerHTML = E('<div class="ml-empty"><svg class="ei lg"><use href="#icon-box"/></svg> Tidak ada data</div>');
+        infoEl.textContent = '0 data';
+        return;
+      }
+
+      var tp = Math.ceil(data.length / STOCK_PER_PAGE);
+      if (state.stock.page > tp) state.stock.page = tp;
+      if (state.stock.page < 1) state.stock.page = 1;
+      var pd = data.slice((state.stock.page - 1) * STOCK_PER_PAGE, state.stock.page * STOCK_PER_PAGE);
+      var gs = (state.stock.page - 1) * STOCK_PER_PAGE;
+
+      list.innerHTML = E(pd.map(function(item, i) {
+        var gi = items.indexOf(item), stock = stockData[item.name] || 0;
+        var sc = stock > 0 ? 'ok' : stock === 0 ? 'zero' : 'out';
+        var ac = catAccent(item.cat);
+        return '<div class="ml-card" style="--accent-cat:' + ac + ';--i:' + (i % 14) + '" onclick="openQuickStock(' + gi + ')">' +
+          '<span class="ml-no" data-col="no">#' + (gs + i + 1) + '</span>' +
+          '<div class="ml-top"><div class="ml-name" data-col="name">' + escapeHtml(item.name) + '</div>' +
+          '<div class="ml-stock big ' + sc + '" data-col="stock"><svg class="ei"><use href="#icon-box"/></svg> ' + stock + '</div></div>' +
+          '<div class="ml-meta"><span class="ml-tag code" data-col="code">' + escapeHtml(item.code || '•') + '</span>' +
+          (item.size ? '<span class="ml-tag" data-col="size" style="font-weight:800">OS ' + escapeHtml(item.size) + '</span>' : '') +
+          '<span class="ml-tag cat" data-col="cat" style="--accent-cat:' + ac + '">' + escapeHtml(item.cat || '•') + '</span>' +
+          '<span class="ml-price inline" data-col="price">' + fmtCurrency(item.price) + '</span></div>' +
+          (item.desc ? '<div data-col="desc" style="font-size:9px;color:var(--text-light);margin-top:5px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><svg class="ei" style="width:10px;height:10px;vertical-align:-1px"><use href="#icon-info"/></svg> ' + escapeHtml(item.desc) + '</div>' : '') +
+          '</div>
+      }).join(''));
+
+      infoEl.textContent = data.length + ' data (Hal ' + state.stock.page + '/' + tp + ')';
+      applyColumnVisibility('stock');
+      playListAnim(list);
+    };
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install);
+  } else {
+    install();
+  }
+})();
+/* ==========================================================
+   PATCH v34: FAKTUR BAWAAN LK MASUK LAPORAN PELUNASAN
+   • Pembayaran via tombol Bayar → tampil di pelunasan
+   • LK impor yg sudah dibayar (tanpa rincian payment) → ikut tampil
+   • Badge LK OTM / LK PRT di list
+   (Kalau ada patch v32, boleh dihapus — v34 pengganti resminya)
+   ========================================================== */
+(function() {
+  function isLK(tx) { return tx && (tx.region === 'LKOTM' || tx.region === 'LKPRT'); }
+
+  function remFor(tx, ha) {
+    if (isLK(tx) && typeof window.lkPayableRemaining === 'function') {
+      return window.lkPayableRemaining(tx, ha);
+    }
+    return getRemainingBalance(tx, ha);
+  }
+
+  function install() {
+    if (typeof window.renderSettlementList !== 'function') {
+      setTimeout(install, 100);
+      return;
+    }
+    if (window.__v34Done) return;
+    window.__v34Done = true;
+
+    /* ---- computeSettlements: LK dengan pembayaran WAJIB masuk ---- */
+    window.computeSettlements = function() {
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+      var out = [];
+
+      ha.forEach(function(tx) {
+        if (tx.isCancelled || tx.isRetur || tx.isPi || tx.isOrder) return;
+        var isLKtx = isLK(tx);
+
+        if (tx.payments && tx.payments.length) {
+          // pembayaran normal (tombol Bayar / multi-pay)
+          tx.payments.forEach(function(pay, pIdx) {
+            out.push({
+              key: tx.invNo + '#' + pIdx,
+              invNo: tx.invNo,
+              custName: tx.cust ? tx.cust.name : 'Unknown',
+              custCode: tx.cust ? tx.cust.code : '',
+              date: pay.date,
+              amount: pay.amount || 0,
+              cash: pay.cash || 0,
+              transfer: pay.transfer || 0,
+              cmm: pay.cmm || 0,
+              note: pay.note || '',
+              isLK: isLKtx,
+              isFullSettle: remFor(tx, ha) <= 0
+            });
+          });
+        } else if (isLKtx && (tx.paidAmount || 0) > 0) {
+          // LK impor: tercatat dibayar tapi tanpa rincian payments
+          out.push({
+            key: tx.invNo + '#0',
+            invNo: tx.invNo,
+            custName: tx.cust ? tx.cust.name : 'Unknown',
+            custCode: tx.cust ? tx.cust.code : '',
+            date: tx.date,
+            amount: tx.paidAmount,
+            cash: tx.paidAmount,
+            transfer: 0,
+            cmm: 0,
+            note: '(bawaan LK)',
+            isLK: true,
+            isFullSettle: remFor(tx, ha) <= 0
+          });
+        }
+      });
+
+      return out;
+    };
+
+    /* ---- badge LK OTM / LK PRT di list pelunasan ---- */
+    function addLKBadges() {
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+      var reg = {};
+      ha.forEach(function(t) { reg[t.invNo] = t.region; });
+
+      document.querySelectorAll('.settle-card').forEach(function(card) {
+        var key = card.getAttribute('data-key') || '';
+        var invNo = key.split('#')[0];
+        var region = reg[invNo];
+        if (region === 'LKOTM' || region === 'LKPRT') {
+          var nameEl = card.querySelector('.settle-cust');
+          if (nameEl && !nameEl.querySelector('.lk-settle-tag')) {
+            var tag = document.createElement('span');
+            tag.className = 'lk-settle-tag';
+            tag.style.cssText = 'margin-left:6px;font-size:7px;font-weight:800;padding:1px 6px;border-radius:4px;background:#dbeafe;color:#1e40af;vertical-align:1px';
+            tag.textContent = region === 'LKOTM' ? 'LK OTM' : 'LK PRT';
+            nameEl.appendChild(tag);
+          }
+        }
+      });
+    }
+
+    var oR = window.renderSettlementList;
+    window.renderSettlementList = function() {
+      var r = oR.apply(this, arguments);
+      setTimeout(addLKBadges, 0);
+      return r;
+    };
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install);
+  } else {
+    install();
+  }
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v35: PELUNASAN + LK (final, ada penanda aktif)
+   ========================================================== */
+(function() {
+  function isLK(tx) { return tx && (tx.region === 'LKOTM' || tx.region === 'LKPRT'); }
+  function remFor(tx, ha) {
+    if (isLK(tx) && typeof window.lkPayableRemaining === 'function') return window.lkPayableRemaining(tx, ha);
+    return getRemainingBalance(tx, ha);
+  }
+
+  function apply() {
+    if (typeof window.computeSettlements !== 'function' ||
+        typeof window.renderSettlementList !== 'function') {
+      setTimeout(apply, 150);
+      return;
+    }
+    if (window.__v35) return;
+    window.__v35 = true;
+
+    /* ---- settlements: LK dengan pembayaran WAJIB masuk ---- */
+    window.computeSettlements = function() {
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+      var out = [];
+      ha.forEach(function(tx) {
+        if (tx.isCancelled || tx.isRetur || tx.isPi || tx.isOrder) return;
+        var lk = isLK(tx);
+        if (tx.payments && tx.payments.length) {
+          tx.payments.forEach(function(pay, pIdx) {
+            out.push({
+              key: tx.invNo + '#' + pIdx, invNo: tx.invNo,
+              custName: tx.cust ? tx.cust.name : 'Unknown',
+              custCode: tx.cust ? tx.cust.code : '',
+              date: pay.date, amount: pay.amount || 0,
+              cash: pay.cash || 0, transfer: pay.transfer || 0,
+              cmm: pay.cmm || 0, note: pay.note || '',
+              isLK: lk, isFullSettle: remFor(tx, ha) <= 0
+            });
+          });
+        } else if (lk && (tx.paidAmount || 0) > 0) {
+          out.push({
+            key: tx.invNo + '#0', invNo: tx.invNo,
+            custName: tx.cust ? tx.cust.name : 'Unknown',
+            custCode: tx.cust ? tx.cust.code : '',
+            date: tx.date, amount: tx.paidAmount,
+            cash: tx.paidAmount, transfer: 0, cmm: 0,
+            note: '(bawaan LK)', isLK: true,
+            isFullSettle: remFor(tx, ha) <= 0
+          });
+        }
+      });
+      return out;
+    };
+
+    /* ---- badge LK di list ---- */
+    function badges() {
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+      var reg = {};
+      ha.forEach(function(t) { reg[t.invNo] = t.region; });
+      document.querySelectorAll('.settle-card').forEach(function(card) {
+        var invNo = (card.getAttribute('data-key') || '').split('#')[0];
+        var region = reg[invNo];
+        if (region === 'LKOTM' || region === 'LKPRT') {
+          var nameEl = card.querySelector('.settle-cust');
+          if (nameEl && !nameEl.querySelector('.lk-settle-tag')) {
+            var tag = document.createElement('span');
+            tag.className = 'lk-settle-tag';
+            tag.style.cssText = 'margin-left:6px;font-size:7px;font-weight:800;padding:1px 6px;border-radius:4px;background:#dbeafe;color:#1e40af;vertical-align:1px';
+            tag.textContent = region === 'LKOTM' ? 'LK OTM' : 'LK PRT';
+            nameEl.appendChild(tag);
+          }
+        }
+      });
+    }
+    var oR = window.renderSettlementList;
+    window.renderSettlementList = function() {
+      var r = oR.apply(this, arguments);
+      setTimeout(badges, 0);
+      return r;
+    };
+
+    /* ---- PENANDA: chip "+LK v35" di judul ---- */
+    var oT = window.openReportTab;
+    if (oT && !oT._v35) {
+      window.openReportTab = function(tab) {
+        var r = oT.apply(this, arguments);
+        if (tab === 'settlement') {
+          var t = document.getElementById('reportViewTitle');
+          if (t) t.innerHTML = '<svg><use href="#icon-check-circle"/></svg>Laporan Pelunasan <span style="font-size:8px;font-weight:800;color:var(--success);background:rgba(22,163,74,.12);padding:2px 7px;border-radius:6px;vertical-align:2px">+LK v35</span>';
+        }
+        return r;
+      };
+      window.openReportTab._v35 = true;
+    }
+
+    try { console.log('[v35] pelunasan+LK aktif, entri: ' + computeSettlements().length); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply);
+  else apply();
 })();
 </script>
 </body>
