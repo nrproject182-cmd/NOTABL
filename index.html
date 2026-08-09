@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v4.0</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v4.1</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='4.0';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='4.1';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -2636,7 +2636,7 @@ document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){if
       };
     }
   })(WRAP[w])}
-  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v4.0'}catch(e){}
+  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v4.1'}catch(e){}
   try{var sl=document.querySelector('.sp-load');if(sl)sl.textContent='Memuat sistem\u2026'}catch(e){}
   try{repairAll(document.body)}catch(e){}
   setTimeout(function(){try{repairAll(document.body)}catch(e){}},200);
@@ -4685,6 +4685,1299 @@ body:has(#cvMergeView[style*="flex"]) .bottom-nav{transform:translateY(112%);opa
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);
   else install();
+})();
+/* ==========================================================
+   PATCH v21: FORMAT SHARE WA PELUNASAN - SIMPEL
+   Override shareSettlementsToWA dengan format lebih clean
+   ========================================================== */
+(function() {
+  function install() {
+    if (typeof window.shareSettlementsToWA !== 'function') {
+      setTimeout(install, 100);
+      return;
+    }
+    if (window.shareSettlementsToWA._v21) return;
+
+    window.shareSettlementsToWA = function() {
+      if (!selectedSettleKeys.size) {
+        alertWarning('Pilih minimal 1 data pelunasan!');
+        return;
+      }
+
+      var all = computeSettlements();
+      var sel = all.filter(s => selectedSettleKeys.has(s.key));
+      sel.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      // Group by customer (code atau name)
+      var map = {}, order = [];
+      sel.forEach(function(s) {
+        var code = s.custCode || ('__NAME__' + s.custName);
+        if (!map[code]) {
+          map[code] = { name: s.custName, code: s.custCode, rows: [] };
+          order.push(code);
+        }
+        map[code].rows.push(s);
+      });
+
+      // Build text dengan format simpel
+      var txt = '';
+      var grand = 0;
+
+      order.forEach(function(code, gi) {
+        var g = map[code];
+        var head = g.code ? (g.name + ' (' + g.code + ')') : g.name;
+        
+        if (gi > 0) txt += '\n';
+        txt += '*' + head.toUpperCase() + '*\n';
+
+        var sumAmt = 0, sumCmm = 0;
+        g.rows.forEach(function(r) {
+          var tagihan = (parseFloat(r.amount) || 0) + (parseFloat(r.cmm) || 0);
+          txt += r.invNo + ' = ' + fmtCurrencyFull(tagihan) + '\n';
+          sumAmt += (parseFloat(r.amount) || 0);
+          sumCmm += (parseFloat(r.cmm) || 0);
+        });
+
+        if (sumCmm > 0) {
+          txt += '✂ POT CAS / CMM = ' + fmtCurrencyFull(sumCmm) + '\n';
+        }
+        txt += '*TOTAL = ' + fmtCurrencyFull(sumAmt) + '*\n';
+        grand += sumAmt;
+      });
+
+      txt += '\n*GRAND TOTAL = ' + fmtCurrencyFull(grand) + '*';
+
+      window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
+    };
+
+    window.shareSettlementsToWA._v21 = true;
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install);
+  } else {
+    install();
+  }
+})();
+/* ==========================================================
+   PATCH v21: TAMBAH REGION BARU - LK OTOMOTIF & LK PERTANIAN
+   ========================================================== */
+(function() {
+  function install() {
+    // 1. Tambahin region baru di dropdown converter
+    if (typeof window.cvUpdateUI === 'function' && !window.cvUpdateUI._v21) {
+      var orig = window.cvUpdateUI;
+      window.cvUpdateUI = function() {
+        orig.apply(this, arguments);
+        // Tambahin opsi region baru
+        var rr = document.getElementById('cvRegionRow');
+        if (rr && typeof CV !== 'undefined' && CV.tab === 'invoices') {
+          var sel = document.getElementById('cvRegion');
+          if (sel) {
+            var hasLKOTM = Array.from(sel.options).some(o => o.value === 'LKOTM');
+            if (!hasLKOTM) {
+              var opt1 = document.createElement('option');
+              opt1.value = 'LKOTM';
+              opt1.textContent = 'LK Otomotif (OTM + PISTON)';
+              var opt2 = document.createElement('option');
+              opt2.value = 'LKPRT';
+              opt2.textContent = 'LK Pertanian';
+              sel.appendChild(opt1);
+              sel.appendChild(opt2);
+            }
+          }
+        }
+      };
+      window.cvUpdateUI._v21 = true;
+    }
+
+    // 2. Modifikasi getPrefixForMode untuk region baru
+    if (typeof window.getPrefixForMode === 'function' && !window.getPrefixForMode._v21) {
+      var origPrefix = window.getPrefixForMode;
+      window.getPrefixForMode = function(m) {
+        var ml = getMonthLetter(new Date().getMonth());
+        if (m === 'lkotm') return 'LK-OTM/' + ml + '/';
+        if (m === 'lkprt') return 'LK-PRT/' + ml + '/';
+        return origPrefix.apply(this, arguments);
+      };
+      window.getPrefixForMode._v21 = true;
+    }
+
+    // 3. Modifikasi getCounterTypeForMode
+    if (typeof window.getCounterTypeForMode === 'function' && !window.getCounterTypeForMode._v21) {
+      var origCounter = window.getCounterTypeForMode;
+      window.getCounterTypeForMode = function(m) {
+        if (m === 'lkotm') return 'lkotm';
+        if (m === 'lkprt') return 'lkprt';
+        return origCounter.apply(this, arguments);
+      };
+      window.getCounterTypeForMode._v21 = true;
+    }
+
+    // 4. Modifikasi consumeInvNo untuk support region baru
+    if (typeof window.consumeInvNo === 'function' && !window.consumeInvNo._v21) {
+      var origConsume = window.consumeInvNo;
+      window.consumeInvNo = function(mode) {
+        if (mode === 'lkotm' || mode === 'lkprt') {
+          var ct = getCounterTypeForMode(mode);
+          var c = getInvCounter(ct);
+          var inp = document.getElementById('invNumInput');
+          
+          var requested = null;
+          if (manualInvMode && manualInvNumber) requested = manualInvNumber;
+          else if (invUserEdited) requested = inp.value.trim();
+          
+          var full, usedNum = null;
+          if (requested !== null && requested !== '') {
+            var isNum = /^\d+$/.test(requested);
+            var finalStr = isNum ? padInvNum(Math.max(1, Math.min(9999, parseInt(requested)))) : requested;
+            full = getPrefixForMode(mode) + finalStr;
+            if (isInvNoExists(full)) return null;
+            usedNum = isNum ? parseInt(requested) : null;
+          } else {
+            var nn = (c.lastNum || 0) + 1;
+            while (isInvNoExists(getPrefixForMode(mode) + padInvNum(nn))) nn++;
+            full = getPrefixForMode(mode) + padInvNum(nn);
+            usedNum = nn;
+          }
+          
+          if (usedNum !== null && usedNum > (c.lastNum || 0)) {
+            c.lastNum = usedNum;
+            saveInvCounter(ct, c);
+          }
+          
+          manualInvMode = false;
+          manualInvNumber = '';
+          localStorage.setItem('manualInvMode', 'false');
+          localStorage.removeItem('manualInvNumber');
+          inp.classList.remove('manual-mode');
+          inp.placeholder = '';
+          inp.value = padInvNum((c.lastNum || 0) + 1);
+          invUserEdited = false;
+          return full;
+        }
+        return origConsume.apply(this, arguments);
+      };
+      window.consumeInvNo._v21 = true;
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install);
+  } else {
+    install();
+  }
+})();
+
+
+/* ==========================================================
+   PATCH v22: LOGIC LK OTOMOTIF & PERTANIAN
+   - Tidak masuk tagihan/piutang
+   - Masuk bawaan luar kota
+   - Pembayaran cash masuk ke LK
+   ========================================================== */
+(function() {
+  function install() {
+    // 1. Helper: cek apakah faktur LK
+    window.isLKFacture = function(tx) {
+      if (!tx) return false;
+      return tx.region === 'LKOTM' || tx.region === 'LKPRT';
+    };
+
+    // 2. Modifikasi lkInclude - masuk laporan LK
+    if (typeof window.lkInclude === 'function' && !window.lkInclude._v22) {
+      var origLkInclude = window.lkInclude;
+      window.lkInclude = function(tx) {
+        if (!tx || tx.isCancelled) return false;
+        // LK OTM dan LKPRT selalu masuk LK
+        if (tx.region === 'LKOTM' || tx.region === 'LKPRT') return true;
+        return origLkInclude.apply(this, arguments);
+      };
+      window.lkInclude._v22 = true;
+    }
+
+    // 3. Modifikasi isJT - TIDAK masuk jatuh tempo
+    if (typeof window.isJT === 'function' && !window.isJT._v22) {
+      var origIsJT = window.isJT;
+      window.isJT = function(tx, ha) {
+        // LK OTM dan LKPRT tidak masuk tagihan/piutang
+        if (tx.region === 'LKOTM' || tx.region === 'LKPRT') return false;
+        return origIsJT.apply(this, arguments);
+      };
+      window.isJT._v22 = true;
+    }
+
+    // 4. Modifikasi getRemainingBalance - tidak ada sisa tagihan
+    if (typeof window.getRemainingBalance === 'function' && !window.getRemainingBalance._v22) {
+      var origBalance = window.getRemainingBalance;
+      window.getRemainingBalance = function(tx, ha) {
+        // LK OTM dan LKPRT tidak punya tagihan
+        if (tx.region === 'LKOTM' || tx.region === 'LKPRT') return 0;
+        return origBalance.apply(this, arguments);
+      };
+      window.getRemainingBalance._v22 = true;
+    }
+
+    // 5. Modifikasi computeLKAuto - masuk bawaan luar kota
+    if (typeof window.computeLKAuto === 'function' && !window.computeLKAuto._v22) {
+      var origCompute = window.computeLKAuto;
+      window.computeLKAuto = function(r) {
+        var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+        var dep = new Date(r.departDate);
+        dep.setHours(0, 0, 0, 0);
+        var ret = new Date(r.returnDate);
+        ret.setHours(23, 59, 59, 999);
+        var depD = new Date(r.departDate);
+        depD.setHours(0, 0, 0, 0);
+        
+        var inP = function(d) {
+          var x = new Date(d);
+          return x >= dep && x <= ret;
+        };
+        
+        var z = function() { return { OTOMOTIF: 0, PERTANIAN: 0, PISTON: 0, LAIN: 0 }; };
+        var penjualan = z(), order = z();
+        var totalCashJkt = 0, totalTransfer = 0, cmmKhusus = 0, cmmCash = 0;
+        var tagihanDibawa = 0, tagihanJT = 0;
+        var bawaanLK = { OTOMOTIF: 0, PERTANIAN: 0 }; // Bawaan LK
+
+        ha.forEach(function(tx) {
+          if (tx.isCancelled || !lkInclude(tx)) return;
+
+          // LK OTOMOTIF dan LK PERTANIAN masuk bawaan LK
+          if (tx.region === 'LKOTM' || tx.region === 'LKPRT') {
+            if (inP(tx.date)) {
+              var group = tx.region === 'LKOTM' ? 'OTOMOTIF' : 'PERTANIAN';
+              
+              // Hitung total penjualan LK
+              var totalTx = 0;
+              (tx.rows || []).forEach(function(rw) {
+                totalTx += (parseFloat(rw.total) || 0);
+              });
+              bawaanLK[group] += totalTx;
+              penjualan[group] += totalTx;
+
+              // Cek pembayaran cash
+              if (tx.payments && tx.payments.length > 0) {
+                tx.payments.forEach(function(p) {
+                  if (inP(p.date)) {
+                    totalCashJkt += payCashOf(p);
+                    totalTransfer += payTransferOf(p);
+                    cmmKhusus += (p.cmm || 0);
+                  }
+                });
+              }
+            }
+            return; // Skip logic normal
+          }
+
+          // Logic existing untuk REG/JKT/BDG
+          if (tx.payments) tx.payments.forEach(function(p) {
+            if (inP(p.date)) {
+              totalCashJkt += payCashOf(p);
+              totalTransfer += payTransferOf(p);
+              cmmKhusus += (p.cmm || 0);
+            }
+          });
+
+          if (tx.isOrder) {
+            if (inP(tx.date)) (tx.rows || []).forEach(function(rw) {
+              order[lkGroupOf(rw)] += (parseFloat(rw.total) || 0);
+            });
+            return;
+          }
+          if (tx.isRetur || tx.isPi) return;
+
+          if (inP(tx.date)) {
+            cmmCash += (tx.discTotal || 0);
+            (tx.rows || []).forEach(function(rw) {
+              penjualan[lkGroupOf(rw)] += netRowLK(tx, rw);
+            });
+          }
+
+          var txD = new Date(tx.date);
+          txD.setHours(0, 0, 0, 0);
+          if (txD <= depD) {
+            var rem = remainingAt(tx, depD, ha);
+            if (rem > 0) {
+              tagihanDibawa += rem;
+              var due = notaDueDate(tx);
+              if (due && due <= depD) tagihanJT += rem;
+            }
+          }
+        });
+
+        return {
+          totalCashJkt: totalCashJkt,
+          totalTransfer: totalTransfer,
+          cmmKhusus: cmmKhusus,
+          cmmCash: cmmCash,
+          cmmTotal: cmmKhusus + cmmCash,
+          tagihanDibawa: tagihanDibawa,
+          tagihanJT: tagihanJT,
+          penjualan: penjualan,
+          order: order,
+          bawaanLK: bawaanLK // Bawaan LK baru
+        };
+      };
+      window.computeLKAuto._v22 = true;
+    }
+
+    // 6. Modifikasi render history detail - tampilkan badge LK
+    if (typeof window.renderHistoryDetail === 'function' && !window.renderHistoryDetail._v22) {
+      var origRender = window.renderHistoryDetail;
+      window.renderHistoryDetail = function(gi) {
+        var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+        var tx = ha[gi];
+        
+        if (tx && (tx.region === 'LKOTM' || tx.region === 'LKPRT')) {
+          // Set status badge khusus LK
+          var badge = tx.region === 'LKOTM' ? 
+            '<span class="tx-badge" style="background:#dbeafe;color:#1e40af">LK OTM</span>' :
+            '<span class="tx-badge" style="background:#dcfce7;color:#166534">LK PRT</span>';
+          
+          // Render normal dulu
+          origRender.apply(this, arguments);
+          
+          // Tambahin badge LK
+          var badgeContainer = document.querySelector('.inv-detail-badges');
+          if (badgeContainer) {
+            badgeContainer.innerHTML += badge;
+          }
+        } else {
+          origRender.apply(this, arguments);
+        }
+      };
+      window.renderHistoryDetail._v22 = true;
+    }
+
+    // 7. Modifikasi filter history
+    if (typeof window.updateInvoiceTypeFilterMenu === 'function' && !window.updateInvoiceTypeFilterMenu._v22) {
+      var origFilter = window.updateInvoiceTypeFilterMenu;
+      window.updateInvoiceTypeFilterMenu = function() {
+        origFilter.apply(this, arguments);
+        
+        // Tambahin filter LK OTM dan LK PRT
+        var menu = document.getElementById('invoiceTypeFilterMenu');
+        if (menu && !menu.querySelector('[data-filter="lkotm"]')) {
+          var divider = menu.querySelectorAll('.tm-divider');
+          var lastDivider = divider[divider.length - 1];
+          
+          var label1 = document.createElement('div');
+          label1.className = 'tm-label';
+          label1.textContent = 'LK Bawaan';
+          
+          var item1 = document.createElement('div');
+          item1.className = 'dropdown-item';
+          item1.setAttribute('data-filter', 'lkotm');
+          item1.innerHTML = '<svg><use href="#icon-truck"/></svg> LK Otomotif';
+          item1.onclick = function() { applyInvoiceTypeFilter('lkotm'); };
+          
+          var item2 = document.createElement('div');
+          item2.className = 'dropdown-item';
+          item2.setAttribute('data-filter', 'lkprt');
+          item2.innerHTML = '<svg><use href="#icon-leaf"/></svg> LK Pertanian';
+          item2.onclick = function() { applyInvoiceTypeFilter('lkprt'); };
+          
+          if (lastDivider) {
+            lastDivider.after(label1, item1, item2);
+          } else {
+            menu.appendChild(label1);
+            menu.appendChild(item1);
+            menu.appendChild(item2);
+          }
+        }
+      };
+      window.updateInvoiceTypeFilterMenu._v22 = true;
+    }
+
+    // 8. Modifikasi loadHistory untuk support filter baru
+    if (typeof window.loadHistory === 'function' && !window.loadHistory._v22) {
+      var origLoad = window.loadHistory;
+      window.loadHistory = function() {
+        var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+        var q = (document.getElementById('searchHistory').value || '').toLowerCase();
+        
+        var filtered = ha.filter(function(tx) {
+          var s = ((tx.cust ? tx.cust.name : '') + ' ' + (tx.cust ? tx.cust.code : '') + ' ' + tx.invNo).toLowerCase();
+          if (s.indexOf(q) < 0) return false;
+          
+          var isImp = isImportedTx(tx);
+          
+          // Filter LK OTM
+          if (invoiceTypeFilter === 'lkotm') {
+            return tx.region === 'LKOTM';
+          }
+          
+          // Filter LK PRT
+          if (invoiceTypeFilter === 'lkprt') {
+            return tx.region === 'LKPRT';
+          }
+          
+          return origLoad.apply(this, arguments);
+        });
+        
+        // Render filtered results
+        var container = document.getElementById('historyList');
+        var infoEl = document.getElementById('historyInfo');
+        
+        if (!filtered.length) {
+          container.innerHTML = E('<div style="text-align:center;padding:30px;color:var(--text-light)"><svg class="ei lg"><use href="#icon-file"/></svg> Tidak ada data</div>');
+          infoEl.textContent = '0 data';
+          document.getElementById('histPrevBtn').disabled = true;
+          document.getElementById('histNextBtn').disabled = true;
+          return;
+        }
+        
+        // ... (logic render normal)
+      };
+      window.loadHistory._v22 = true;
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install);
+  } else {
+    install();
+  }
+})();
+
+
+/* ==========================================================
+   PATCH v23: UI & INTEGRASI
+   ========================================================== */
+(function() {
+  function install() {
+    // 1. Tambahin icon leaf kalau belum ada
+    var svgSprite = document.querySelector('svg[aria-hidden="true"]');
+    if (svgSprite && !document.getElementById('icon-leaf')) {
+      var symbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
+      symbol.id = 'icon-leaf';
+      symbol.setAttribute('viewBox', '0 0 24 24');
+      symbol.innerHTML = '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path>';
+      svgSprite.appendChild(symbol);
+    }
+
+    // 2. Tambahin info di splash/converter
+    if (typeof window.cvUpdateUI === 'function' && !window.cvUpdateUI._v23) {
+      var origUI = window.cvUpdateUI;
+      window.cvUpdateUI = function() {
+        origUI.apply(this, arguments);
+        // Tambahin hint untuk region LK
+        var hint = document.getElementById('cvHint');
+        if (hint && typeof CV !== 'undefined' && CV.tab === 'invoices') {
+          var regionRow = document.getElementById('cvRegionRow');
+          if (regionRow && !regionRow.querySelector('.lk-info')) {
+            var info = document.createElement('div');
+            info.className = 'lk-info';
+            info.style.cssText = 'font-size:9px;color:var(--text-light);margin-top:4px;';
+            info.innerHTML = '💡 <b>LK Otomotif/Pertanian</b>: Faktur bawaan luar kota, tidak masuk tagihan/piutang';
+            regionRow.appendChild(info);
+          }
+        }
+      };
+      window.cvUpdateUI._v23 = true;
+    }
+
+    // 3. Modifikasi badge di history list
+    if (typeof window.loadHistory === 'function' && !window.loadHistory._v23) {
+      var origLoad = window.loadHistory;
+      window.loadHistory = function() {
+        origLoad.apply(this, arguments);
+        
+        // Update badge untuk LK OTM dan LKPRT
+        setTimeout(function() {
+          var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+          document.querySelectorAll('.tx-card').forEach(function(card, idx) {
+            var gi = parseInt(card.getAttribute('onclick').match(/\d+/)[0]);
+            var tx = ha[gi];
+            if (tx && (tx.region === 'LKOTM' || tx.region === 'LKPRT')) {
+              var badgeEl = card.querySelector('.tx-badge');
+              if (badgeEl) {
+                badgeEl.innerHTML = tx.region === 'LKOTM' ? 
+                  '<span class="tx-badge" style="background:#dbeafe;color:#1e40af">LK OTM</span>' :
+                  '<span class="tx-badge" style="background:#dcfce7;color:#166534">LK PRT</span>';
+              }
+            }
+          });
+        }, 100);
+      };
+      window.loadHistory._v23 = true;
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install);
+  } else {
+    install();
+  }
+})();
+/* ==========================================================
+   PATCH v24: FIX HISTORY LAMBAN
+   Optimasi O(n²) → O(n) di loadHistory
+   ========================================================== */
+(function() {
+  function install() {
+    if (typeof window.loadHistory !== 'function') {
+      setTimeout(install, 100);
+      return;
+    }
+    if (window.loadHistory._v24) return;
+
+    // Helper: hitung remaining balance O(1) pakai returMap yang udah dicache
+    function remainingFast(tx, returMap) {
+      if (tx.region === 'LKOTM' || tx.region === 'LKPRT') return 0;
+      var base = (tx.finalGrandTotal !== undefined ? tx.finalGrandTotal : tx.grandTotal) || 0;
+      var total = base - (tx.payDiscount || 0);
+      var ret = returMap[tx.invNo] || 0;
+      return Math.max(0, total - (tx.paidAmount || 0) - ret);
+    }
+
+    window.loadHistory = function() {
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+      var q = (document.getElementById('searchHistory').value || '').toLowerCase();
+
+      // 1) Build returMap SEKALI (O(n))
+      var returMap = {};
+      for (var i = 0; i < ha.length; i++) {
+        var hh = ha[i];
+        if ((hh.isRetur || hh.isPi) && hh.originalInvNo && !hh.isCancelled) {
+          returMap[hh.originalInvNo] = (returMap[hh.originalInvNo] || 0) + (hh.finalGrandTotal || hh.grandTotal || 0);
+        }
+      }
+
+      // 2) Filter SEKALI sambil simpan index (O(n), bukan O(n²))
+      var filteredIdx = [];
+      for (var j = 0; j < ha.length; j++) {
+        var tx = ha[j];
+        var s = ((tx.cust ? tx.cust.name : '') + ' ' + (tx.cust ? tx.cust.code : '') + ' ' + tx.invNo).toLowerCase();
+        if (s.indexOf(q) < 0) continue;
+
+        var isImp = isImportedTx(tx);
+        var ok = true;
+
+        if (invoiceTypeFilter === 'reguler') {
+          if (isImp || tx.isRetur || tx.isPi || tx.isOrder) ok = false;
+        } else if (invoiceTypeFilter === 'bdg') {
+          if (tx.isRetur || tx.isPi || tx.isOrder) ok = false;
+          else if (!txIsDalamKota(tx)) ok = false;
+        } else if (invoiceTypeFilter === 'jkt') {
+          if (tx.isRetur || tx.isPi || tx.isOrder) ok = false;
+          else if (!txIsLuarKota(tx)) ok = false;
+        } else if (invoiceTypeFilter === 'retur' && !tx.isRetur) ok = false;
+        else if (invoiceTypeFilter === 'pi' && !tx.isPi) ok = false;
+        else if (invoiceTypeFilter === 'order' && !tx.isOrder) ok = false;
+        else if (invoiceTypeFilter === 'lkotm' && tx.region !== 'LKOTM') ok = false;
+        else if (invoiceTypeFilter === 'lkprt' && tx.region !== 'LKPRT') ok = false;
+        else if (invoiceTypeFilter === 'jatuhTempo') {
+          if (tx.isCancelled || tx.isRetur || tx.isPi || tx.isOrder) ok = false;
+          else if (remainingFast(tx, returMap) <= 0) ok = false;
+        } else if (invoiceTypeFilter === 'jtBdg') {
+          if (tx.isCancelled || tx.isRetur || tx.isPi || tx.isOrder) ok = false;
+          else if (remainingFast(tx, returMap) <= 0 || !txIsDalamKota(tx)) ok = false;
+        } else if (invoiceTypeFilter === 'jtJkt') {
+          if (tx.isCancelled || tx.isRetur || tx.isPi || tx.isOrder) ok = false;
+          else if (remainingFast(tx, returMap) <= 0 || !txIsLuarKota(tx)) ok = false;
+        }
+
+        if (ok) filteredIdx.push(j);
+      }
+
+      // 3) Sort by date desc (pakai index)
+      filteredIdx.sort(function(a, b) {
+        return new Date(ha[b].date) - new Date(ha[a].date);
+      });
+
+      // 4) Set global (dipakai navigateDetail)
+      filteredHistoryGIs = filteredIdx;
+
+      var container = document.getElementById('historyList');
+      var infoEl = document.getElementById('historyInfo');
+
+      if (!filteredIdx.length) {
+        container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-light)"><svg class="ei lg"><use href="#icon-file"/></svg> Tidak ada data</div>';
+        infoEl.textContent = '0 data';
+        document.getElementById('histPrevBtn').disabled = true;
+        document.getElementById('histNextBtn').disabled = true;
+        return;
+      }
+
+      // 5) Pagination
+      var tp = Math.ceil(filteredIdx.length / HISTORY_PER_PAGE);
+      if (state.history.page > tp) state.history.page = tp;
+      if (state.history.page < 1) state.history.page = 1;
+      var startIdx = (state.history.page - 1) * HISTORY_PER_PAGE;
+      var pd = filteredIdx.slice(startIdx, startIdx + HISTORY_PER_PAGE);
+
+      // 6) Render HTML (pakai remainingFast O(1))
+      var html = '', ld = '';
+      var now = new Date();
+      now.setHours(0, 0, 0, 0);
+
+      for (var k = 0; k < pd.length; k++) {
+        var gi = pd[k];
+        var tx2 = ha[gi];
+        var td = new Date(tx2.date);
+        var ds = td.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+        if (ds !== ld) {
+          html += '<div class="date-group"><svg class="ei"><use href="#icon-calendar"/></svg> ' + ds + '</div>';
+          ld = ds;
+        }
+
+        var badge = '';
+        var isImp2 = isImportedTx(tx2);
+        var isRegNota = !tx2.isCancelled && !tx2.isRetur && !tx2.isPi && !tx2.isOrder;
+        var rem = isRegNota ? remainingFast(tx2, returMap) : -1;
+        var ta = tx2.finalGrandTotal !== undefined ? tx2.finalGrandTotal : tx2.grandTotal;
+        var returCut = isRegNota ? (returMap[tx2.invNo] || 0) : 0;
+
+        // Badge logic
+        if (tx2.isCancelled) badge = '<span class="tx-badge tx-badge-cancel">BATAL</span>';
+        else if (tx2.isRetur) badge = '<span class="tx-badge tx-badge-retur">RETUR</span>';
+        else if (tx2.isPi) badge = '<span class="tx-badge tx-badge-pi">PI</span>';
+        else if (tx2.isOrder) badge = '<span class="tx-badge tx-badge-order">ORDER</span>';
+        else if (tx2.region === 'LKOTM') badge = '<span class="tx-badge" style="background:#dbeafe;color:#1e40af">LK OTM</span>';
+        else if (tx2.region === 'LKPRT') badge = '<span class="tx-badge" style="background:#dcfce7;color:#166534">LK PRT</span>';
+        else if (isImp2) badge = tx2.region === 'BDG' ? '<span class="tx-badge tx-badge-bdg">BDG</span>' : '<span class="tx-badge tx-badge-jkt">JKT</span>';
+        else badge = rem <= 0 ? '<span class="tx-badge tx-badge-lunas">LUNAS</span>' : tx2.isCash ? '<span class="tx-badge tx-badge-cash">CASH</span>' : '<span class="tx-badge tx-badge-reg">REG</span>';
+
+        if (isRegNota && returCut > 0) badge += '<span class="tx-badge tx-badge-retur"> ' + fmtCurrency(returCut) + '</span>';
+        if (isRegNota && getOngkir(tx2) > 0) badge += '<span class="tx-badge tx-badge-ongkir"> ' + fmtCurrency(getOngkir(tx2)) + '</span>';
+
+        // Overdue badge
+        if (isRegNota && rem > 0) {
+          var _due = notaDueDate(tx2);
+          if (_due) {
+            var _diff = calDaysDiff(_due, now);
+            if (_diff < 0) badge += '<span class="tx-badge tx-badge-overdue">TELAT ' + (-_diff) + 'h</span>';
+            else if (_diff === 0) badge += '<span class="tx-badge tx-badge-jkt">JATUH TEMPO</span>';
+            else badge += '<span class="tx-badge tx-badge-jkt">H-' + _diff + '</span>';
+          }
+        }
+
+        // Amount HTML
+        var amountHtml = '';
+        if (!isRegNota) {
+          amountHtml = '<div class="tx-amount" style="color:' + (tx2.isCancelled ? 'var(--text-light)' : tx2.isRetur ? 'var(--retur)' : tx2.isPi ? 'var(--pi)' : 'var(--success)') + '">' + (tx2.isRetur || tx2.isPi ? '- ' : '') + fmtCurrency(ta) + '</div>';
+        } else if (rem > 0 && rem < ta) {
+          amountHtml = '<div style="text-align:right;line-height:1.15"><div style="font-size:7px;font-weight:800;color:var(--warning);text-transform:uppercase">Sisa Nota</div><div class="tx-amount" style="color:var(--warning)">' + fmtCurrency(rem) + '</div><div style="font-size:8.5px;color:var(--text-light);font-family:var(--font-mono)">' + fmtCurrency(ta) + '</div></div>';
+        } else if (rem <= 0) {
+          amountHtml = '<div style="text-align:right;line-height:1.15"><div style="font-size:7px;font-weight:800;color:var(--success);text-transform:uppercase">Lunas</div><div class="tx-amount" style="color:var(--success)">' + fmtCurrency(ta) + '</div></div>';
+        } else {
+          amountHtml = '<div style="text-align:right;line-height:1.15"><div class="tx-amount">' + fmtCurrency(ta) + '</div><div style="font-size:7px;font-weight:700;color:var(--warning);text-transform:uppercase">Belum Bayar</div></div>';
+        }
+
+        var desc = (tx2.rows || []).filter(function(r) { return r.desc; }).map(function(r) { return escapeHtml(r.desc) + (r.qty ? (' ×' + r.qty) : ''); }).join(', ');
+        var sel = selectedHistIds.has(gi);
+
+        html += '<div class="tx-card' + (sel ? ' bulk-selected' : '') + '" onclick="handleHistoryCardClick(' + gi + ')">' +
+          (multiPayMode ? '<div class="tx-chk">' + (sel ? '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>' : '') + '</div>' : '') +
+          '<div class="tx-card-main"><div class="tx-card-top"><div style="min-width:0;flex:1"><div class="tx-name">' + escapeHtml(tx2.cust ? tx2.cust.name : 'Unknown') + ' ' + badge + '</div><div class="tx-inv">' + escapeHtml(tx2.invNo) + ' • ' + td.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + '</div></div>' + amountHtml + '</div>' +
+          (desc ? '<div class="tx-desc">' + desc + '</div>' : '') +
+          '</div></div>';
+      }
+
+      container.innerHTML = html;
+      infoEl.textContent = filteredIdx.length + ' data (Hal ' + state.history.page + '/' + tp + ')';
+      document.getElementById('histPrevBtn').disabled = state.history.page <= 1;
+      document.getElementById('histNextBtn').disabled = state.history.page >= tp;
+      playListAnim(container);
+    };
+
+    window.loadHistory._v24 = true;
+
+    // Cache jtCount biar gak dihitung 3× terus
+    if (typeof window.jtCount === 'function' && !window.jtCount._v24) {
+      var origJtCount = window.jtCount;
+      var cache = { ts: 0, data: {} };
+      window.jtCount = function(loc) {
+        var now = Date.now();
+        // Cache valid 2 detik
+        if (now - cache.ts > 2000) {
+          cache.ts = now;
+          cache.data = {};
+          ['all', 'bdg', 'jkt'].forEach(function(l) {
+            cache.data[l] = origJtCount(l);
+          });
+        }
+        return cache.data[loc] || 0;
+      };
+      window.jtCount._v24 = true;
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install);
+  } else {
+    install();
+  }
+})();
+/* ==========================================================
+   PATCH v25: FIX BAWAAN LUAR KOTA (LK OTM / LK PRT)
+   - Bawaan = faktur LK s.d. tgl pulang (masuk rincian)
+   - Pembayaran cash periode ini → masuk Penerimaan & Setor
+   - TETAP tidak masuk tagihan/piutang/omset
+   ========================================================== */
+(function() {
+  function isLK(tx) {
+    return tx && (tx.region === 'LKOTM' || tx.region === 'LKPRT');
+  }
+
+  function install() {
+    if (typeof window.computeLKAuto !== 'function') {
+      setTimeout(install, 100);
+      return;
+    }
+    if (window.computeLKAuto._v25) return;
+
+    /* ---- 1) Ganti computeLKAuto dengan logic bawaan yang benar ---- */
+    window.computeLKAuto = function(r) {
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+      var dep = new Date(r.departDate); dep.setHours(0, 0, 0, 0);
+      var ret = new Date(r.returnDate); ret.setHours(23, 59, 59, 999);
+      var depD = new Date(r.departDate); depD.setHours(0, 0, 0, 0);
+      var inP = function(d) { var x = new Date(d); return x >= dep && x <= ret; };
+      var z = function() { return { OTOMOTIF: 0, PERTANIAN: 0, PISTON: 0, LAIN: 0 }; };
+
+      var penjualan = z(), order = z();
+      var totalCashJkt = 0, totalTransfer = 0, cmmKhusus = 0;
+      var tagihanDibawa = 0, tagihanJT = 0;
+      var bawaan = { OTM: 0, PRT: 0 }, bawaanCnt = { OTM: 0, PRT: 0 };
+      var cashBawaan = 0, trfBawaan = 0;
+
+      ha.forEach(function(tx) {
+        if (!tx || tx.isCancelled) return;
+
+        /* ===== FAKTUR LK (BAWAAN) ===== */
+        if (isLK(tx)) {
+          var txD = new Date(tx.date); txD.setHours(0, 0, 0, 0);
+
+          // Bawaan = faktur LK yg dibuat s.d. tanggal pulang
+          if (txD <= ret) {
+            var tot = (tx.finalGrandTotal != null ? tx.finalGrandTotal : (tx.grandTotal || 0));
+            if (tx.region === 'LKOTM') { bawaan.OTM += tot; bawaanCnt.OTM++; }
+            else { bawaan.PRT += tot; bawaanCnt.PRT++; }
+          }
+
+          // Pembayaran faktur LK PADA PERIODE INI → cash bawaan LK
+          (tx.payments || []).forEach(function(p) {
+            if (inP(p.date)) {
+              var c = payCashOf(p), t = payTransferOf(p);
+              cashBawaan += c;
+              trfBawaan += t;
+              totalCashJkt += c;   // ← masuk Penerimaan & SETOR KE BCA
+              totalTransfer += t;
+              cmmKhusus += (p.cmm || 0);
+            }
+          });
+          return; // TIDAK masuk tagihan / piutang / omset
+        }
+
+        /* ===== LOGIKA NORMAL (REG / JKT / BDG) ===== */
+        if (!lkInclude(tx)) return;
+
+        if (tx.payments) tx.payments.forEach(function(p) {
+          if (inP(p.date)) {
+            totalCashJkt += payCashOf(p);
+            totalTransfer += payTransferOf(p);
+            cmmKhusus += (p.cmm || 0);
+          }
+        });
+
+        if (tx.isOrder) {
+          if (inP(tx.date)) (tx.rows || []).forEach(function(rw) {
+            order[lkGroupOf(rw)] += (parseFloat(rw.total) || 0);
+          });
+          return;
+        }
+        if (tx.isRetur || tx.isPi) return;
+
+        if (inP(tx.date)) {
+          (tx.rows || []).forEach(function(rw) {
+            penjualan[lkGroupOf(rw)] += netRowLK(tx, rw);
+          });
+        }
+
+        var d2 = new Date(tx.date); d2.setHours(0, 0, 0, 0);
+        if (d2 <= depD) {
+          var rem = remainingAt(tx, depD, ha);
+          if (rem > 0) {
+            tagihanDibawa += rem;
+            var due = notaDueDate(tx);
+            if (due && due <= depD) tagihanJT += rem;
+          }
+        }
+      });
+
+      return {
+        totalCashJkt: totalCashJkt,
+        totalTransfer: totalTransfer,
+        cmmKhusus: cmmKhusus,
+        cmmCash: 0,                    // sesuai patch v14: CMM hanya dari pelunasan
+        cmmTotal: cmmKhusus,
+        tagihanDibawa: tagihanDibawa,
+        tagihanJT: tagihanJT,
+        penjualan: penjualan,
+        order: order,
+        bawaanLK: bawaan,
+        bawaanLKCnt: bawaanCnt,
+        cashBawaanLK: cashBawaan,
+        trfBawaanLK: trfBawaan
+      };
+    };
+    window.computeLKAuto._v25 = true;
+
+    /* ---- 2) Inject baris "Bawaan Luar Kota" ke halaman Rincian ---- */
+    if (typeof window.viewLKReportDetail === 'function' && !window.viewLKReportDetail._v25) {
+      var origView = window.viewLKReportDetail;
+      window.viewLKReportDetail = function(id) {
+        var res = origView.apply(this, arguments);
+        setTimeout(function() { injectBawaanUI(id); }, 0);
+        return res;
+      };
+      window.viewLKReportDetail._v25 = true;
+    }
+
+    function injectBawaanUI(id) {
+      var r = (typeof lkReports !== 'undefined') ? lkReports.find(function(x) { return x.id === id; }) : null;
+      if (!r || !r._auto) return;
+      var auto = r._auto;
+
+      var statBody = document.getElementById('lkSec_stat');
+      if (!statBody) return;
+
+      var old = document.getElementById('bawaanLKBlock');
+      if (old) old.remove();
+
+      var has = (auto.bawaanLK && (auto.bawaanLK.OTM > 0 || auto.bawaanLK.PRT > 0)) ||
+                (auto.cashBawaanLK > 0) || (auto.trfBawaanLK > 0);
+      if (!has) return;
+
+      var h = '<div id="bawaanLKBlock" style="margin-bottom:12px">';
+      h += '<div style="font-size:8px;font-weight:700;color:var(--accent);text-transform:uppercase;margin:2px 0 6px;letter-spacing:.5px">🚚 Bawaan Luar Kota <span style="color:var(--text-light)">(tidak masuk tagihan/omset)</span></div>';
+      h += autoRow('Bawaan LK Otomotif + Piston (' + (auto.bawaanLKCnt.OTM || 0) + ' nota)', auto.bawaanLK.OTM || 0);
+      h += autoRow('Bawaan LK Pertanian (' + (auto.bawaanLKCnt.PRT || 0) + ' nota)', auto.bawaanLK.PRT || 0);
+      h += autoRow('💵 Cash Bawaan LK (masuk penerimaan)', auto.cashBawaanLK || 0);
+      if (auto.trfBawaanLK > 0) h += autoRow('Transfer Bawaan LK', auto.trfBawaanLK);
+      h += '</div>';
+
+      statBody.insertAdjacentHTML('afterbegin', h);
+    }
+
+    /* ---- 3) recalcLKDetail ga perlu diubah: ----
+       cash bawaan udah masuk totalCashJkt, jadi
+       SUBTOTAL PENERIMAAN & SETOR KE BCA otomatis benar */
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install);
+  } else {
+    install();
+  }
+})();
+/* ==========================================================
+   PATCH v26: FAKTUR LK BISA DIBAYAR (CASH/TRANSFER)
+   - Tombol Bayar muncul di detail faktur LK
+   - Pembayaran masuk ke Laporan Luar Kota (cash bawaan)
+   - TETAP tidak masuk omset / piutang / pelunasan
+   ========================================================== */
+(function() {
+  function isLK(tx) {
+    return tx && (tx.region === 'LKOTM' || tx.region === 'LKPRT');
+  }
+
+  // Sisa yang BISA DIBAYAR untuk faktur LK (total - bayar - retur/PI)
+  function lkPayable(tx, ha) {
+    if (!ha) ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+    var base = tx.finalGrandTotal !== undefined ? tx.finalGrandTotal : (tx.grandTotal || 0);
+    var total = base - (tx.payDiscount || 0);
+    var ret = 0;
+    ha.forEach(function(h) {
+      if ((h.isRetur || h.isPi) && h.originalInvNo === tx.invNo && !h.isCancelled) {
+        ret += (h.finalGrandTotal || h.grandTotal || 0);
+      }
+    });
+    return Math.max(0, total - (tx.paidAmount || 0) - ret);
+  }
+  window.lkPayableRemaining = lkPayable;
+
+  // Trik: sementara ganti getRemainingBalance biar fungsi asli
+  // ngeliat "sisa bawaan" khusus faktur LK
+  function withLKBalance(fn, args, self) {
+    var orig = window.getRemainingBalance;
+    window.getRemainingBalance = function(t, h) { return lkPayable(t, h); };
+    try {
+      return fn.apply(self, args);
+    } finally {
+      window.getRemainingBalance = orig;
+    }
+  }
+
+  function install() {
+    if (typeof window.openPartialPayment !== 'function' ||
+        typeof window.renderHistoryDetail !== 'function') {
+      setTimeout(install, 100);
+      return;
+    }
+    if (window.openPartialPayment._v26) return;
+
+    /* ---- 1) openPartialPayment: faktur LK pakai sisa bawaan ---- */
+    var oPP = window.openPartialPayment;
+    window.openPartialPayment = function(idx) {
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+      var tx = ha[idx];
+      if (tx && isLK(tx) && !tx.isCancelled) {
+        var r = withLKBalance(oPP, arguments, this);
+        // ganti label modal biar jelas
+        try {
+          var lbl = document.querySelector('#histPayModal .pay-recap .pr-row.grand span:first-child');
+          if (lbl) lbl.textContent = 'Sisa Bawaan (LK)';
+        } catch (e) {}
+        return r;
+      }
+      return oPP.apply(this, arguments);
+    };
+    window.openPartialPayment._v26 = true;
+
+    /* ---- 2) confirmHistPay: pesan LUNAS pakai sisa bawaan ---- */
+    var oConf = window.confirmHistPay;
+    window.confirmHistPay = function() {
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+      var tx = ha[histPayIdx];
+      if (tx && isLK(tx)) return withLKBalance(oConf, arguments, this);
+      return oConf.apply(this, arguments);
+    };
+    window.confirmHistPay._v26 = true;
+
+    /* ---- 3) renderHistoryDetail: munculin tombol Bayar + relabel ---- */
+    var oDet = window.renderHistoryDetail;
+    window.renderHistoryDetail = function(gi) {
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+      var tx = ha[gi];
+      if (tx && isLK(tx) && !tx.isCancelled) {
+        // pakai sisa bawaan → tombol Bayar muncul otomatis kalau belum lunas
+        withLKBalance(oDet, arguments, this);
+
+        // relabel status: "SISA TAGIHAN" → "SISA BAWAAN"
+        var st = document.querySelector('.ro-status-line');
+        if (st) {
+          var rem = lkPayable(tx, ha);
+          st.className = 'ro-status-line ' + (rem <= 0 ? 'lunas' : 'belum');
+          st.innerHTML = '<span class="ro-st-l">' +
+            (rem <= 0
+              ? '<svg class="ei"><use href="#icon-check-circle"/></svg> BAWAAN LUNAS'
+              : '<svg class="ei"><use href="#icon-wallet"/></svg> SISA BAWAAN (LK)') +
+            '</span><span class="ro-st-v">' + fmtCurrencyFull(rem) + '</span>';
+        }
+        return;
+      }
+      return oDet.apply(this, arguments);
+    };
+    window.renderHistoryDetail._v26 = true;
+
+    /* ---- 4) List history: label "Lunas" → "Bawaan" ---- */
+    var oLoad = window.loadHistory;
+    window.loadHistory = function() {
+      var r = oLoad.apply(this, arguments);
+      setTimeout(function() {
+        var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+        document.querySelectorAll('.tx-card').forEach(function(card) {
+          var m = (card.getAttribute('onclick') || '').match(/\d+/);
+          if (!m) return;
+          var tx = ha[parseInt(m[0], 10)];
+          if (!tx || !isLK(tx) || tx.isCancelled) return;
+          var rem = lkPayable(tx, ha);
+          var amt = card.querySelector('.tx-amount');
+          if (amt && amt.previousElementSibling) {
+            var lbl = amt.previousElementSibling;
+            if (rem > 0) {
+              lbl.textContent = 'Sisa Bawaan';
+              lbl.style.color = 'var(--warning)';
+              amt.style.color = 'var(--warning)';
+            } else {
+              lbl.textContent = 'Bawaan Lunas';
+            }
+          }
+        });
+      }, 0);
+      return r;
+    };
+    window.loadHistory._v26 = true;
+
+    /* ---- 5) Pelunasan: pembayaran LK JANGAN masuk laporan pelunasan ---- */
+    if (typeof window.computeSettlements === 'function' && !window.computeSettlements._v26) {
+      var oSet = window.computeSettlements;
+      window.computeSettlements = function() {
+        var all = oSet.apply(this, arguments);
+        var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+        var reg = {};
+        ha.forEach(function(t) { reg[t.invNo] = t.region; });
+        return all.filter(function(s) {
+          return reg[s.invNo] !== 'LKOTM' && reg[s.invNo] !== 'LKPRT';
+        });
+      };
+      window.computeSettlements._v26 = true;
+    }
+
+    /* ---- 6) Laporan Keuangan: faktur LK tidak masuk omset/piutang ---- */
+    if (typeof window.generateFinancialReport === 'function' && !window.generateFinancialReport._v26) {
+      var oFin = window.generateFinancialReport;
+      window.generateFinancialReport = function() {
+        var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+        var tS = 0, sC = 0, tR = 0, rC = 0, tCa = 0, caC = 0, tTr = 0, trC = 0;
+        var lunasAmt = 0, lunasCnt = 0, piutangAmt = 0, piutangCnt = 0;
+        var sSC = {}, oSC = {};
+
+        ha.forEach(function(tx) {
+          if (tx.isCancelled) return;
+          if (tx.region === 'LKOTM' || tx.region === 'LKPRT') return; // ← SKIP LK
+
+          if (tx.isRetur) { tR += (tx.finalGrandTotal || tx.grandTotal || 0); rC++; }
+          else if (tx.isOrder) {
+            (tx.rows || []).forEach(function(r) {
+              var im = findItemByDesc(r.desc), sc = im ? (im.subCat || 'UMUM') : (r.subCat || 'UMUM');
+              if (!oSC[sc]) oSC[sc] = { qty: 0, total: 0 };
+              oSC[sc].qty += parseFloat(r.qty) || 0;
+              oSC[sc].total += parseMoney(r.total) || 0;
+            });
+          } else if (!tx.isPi) {
+            var gt = tx.finalGrandTotal !== undefined ? tx.finalGrandTotal : (tx.grandTotal || 0);
+            tS += gt; sC++;
+            if (tx.isCash) { tCa += gt; caC++; }
+            if (tx.isTransfer) { tTr += gt; trC++; }
+            var rem = getRemainingBalance(tx, ha);
+            if (rem <= 0) { lunasAmt += gt; lunasCnt++; } else { piutangAmt += rem; piutangCnt++; }
+            (tx.rows || []).forEach(function(r) {
+              var im = findItemByDesc(r.desc), sc = im ? (im.subCat || 'UMUM') : (r.subCat || 'UMUM');
+              if (!sSC[sc]) sSC[sc] = { qty: 0, total: 0 };
+              sSC[sc].qty += parseFloat(r.qty) || 0;
+              sSC[sc].total += parseMoney(r.total) || 0;
+            });
+          }
+        });
+
+        document.getElementById('psgLunas').textContent = fmtCurrency(lunasAmt);
+        document.getElementById('psgLunasCnt').textContent = lunasCnt + ' nota';
+        document.getElementById('psgPiutang').textContent = fmtCurrency(piutangAmt);
+        document.getElementById('psgPiutangCnt').textContent = piutangCnt + ' nota';
+        document.getElementById('psgTransfer').textContent = fmtCurrency(tTr);
+        document.getElementById('psgTransferCnt').textContent = trC + ' trx';
+        document.getElementById('psgRetur').textContent = fmtCurrency(tR);
+        document.getElementById('psgReturCnt').textContent = rC + ' trx';
+        document.getElementById('rptTotalSales').textContent = fmtCurrency(tS);
+        document.getElementById('rptSalesCount').textContent = sC + ' trx';
+        document.getElementById('rptTotalCash').textContent = fmtCurrency(tCa);
+        document.getElementById('rptCashCount').textContent = caC + ' trx';
+
+        var fillTable = function(sel, data) {
+          var tb = document.querySelector(sel + ' tbody');
+          var h = '';
+          Object.keys(data).sort().forEach(function(k) {
+            h += '<tr><td>' + escapeHtml(k) + '</td><td class="r">' + data[k].qty + '</td><td class="r">' + fmtCurrency(data[k].total) + '</td></tr>';
+          });
+          tb.innerHTML = E(h) || '<tr><td colspan="3" style="text-align:center;color:var(--text-light);padding:12px">Belum ada data</td></tr>';
+        };
+        fillTable('#rptSalesBySubCat', sSC);
+        fillTable('#rptOrderBySubCat', oSC);
+      };
+      window.generateFinancialReport._v26 = true;
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install);
+  } else {
+    install();
+  }
+})();
+/* ==========================================================
+   PATCH v27: FIX PASTE EXCEL INVOICES TANPA HEADER
+   Auto-deteksi kolom: TANGGAL | CUSTOMER | NO INVOICE | NOMINAL
+   ========================================================== */
+(function() {
+  function isDateCell(s) { return /^\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}$/.test(s); }
+  function isInvCell(s)  { return /^[A-Z]{1,4}-?\d+\/[A-Z0-9]+$/i.test(s); }
+  function isMoneyCell(s){ return /^rp\s?[\d.,]/i.test(s) || /^[\d.,]+$/.test(s); }
+
+  function parseNoHeader(text) {
+    var delim = cvDetectDelim(text);
+    var lines = String(text).replace(/\r/g, '').split('\n').filter(function(l) { return l.trim(); });
+    var rows = lines.map(function(l) { return cvSplit(l, delim); });
+    if (!rows.length) return { rows: [], errors: [], total: 0 };
+
+    // ambil sampel baris pertama yg punya >= 3 kolom
+    var sample = null;
+    for (var i = 0; i < rows.length; i++) { if (rows[i].length >= 3) { sample = rows[i]; break; } }
+    if (!sample) return { rows: [], errors: [], total: 0 };
+
+    // deteksi peran kolom dari pola isi sel
+    var idxDate = -1, idxInv = -1, idxAmt = -1, idxCust = -1;
+    sample.forEach(function(c, ix) {
+      var s = String(c || '').trim();
+      if (idxDate < 0 && isDateCell(s))  { idxDate = ix; return; }
+      if (idxInv  < 0 && isInvCell(s))   { idxInv  = ix; return; }
+      if (idxAmt  < 0 && isMoneyCell(s)) { idxAmt  = ix; return; }
+    });
+    // customer = kolom teks pertama yg tersisa
+    for (var c2 = 0; c2 < sample.length; c2++) {
+      if (c2 !== idxDate && c2 !== idxInv && c2 !== idxAmt) { idxCust = c2; break; }
+    }
+    // wajib ketemu minimal no invoice + nominal
+    if (idxInv < 0 || idxAmt < 0) return { rows: [], errors: [], total: 0 };
+
+    var map = {}, rowCount = 0;
+    rows.forEach(function(r) {
+      var invStr  = String(r[idxInv]  || '').trim();
+      var amtStr  = String(r[idxAmt]  || '').trim();
+      var dateStr = idxDate >= 0 ? String(r[idxDate] || '').trim() : '';
+      var nameStr = idxCust >= 0 ? String(r[idxCust] || '').trim() : '';
+      if (!invStr) return;
+      // lewati baris header (kalau kebetulan ada)
+      if (/invoice|nota|tanggal|customer|nama/i.test(invStr + ' ' + nameStr)) return;
+
+      var custName = nameStr, custCode = '';
+      var m = nameStr.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+      if (m) { custName = m[1].trim(); custCode = m[2].trim(); }
+
+      if (!map[invStr]) {
+        map[invStr] = {
+          invNo: invStr,
+          date: cvParseDate(dateStr),
+          cust: { code: custCode.toUpperCase(), name: custName.toUpperCase(), tempo: 0, disc: {}, sales: '' },
+          rows: [], subTotal: 0, discTotal: 0, shippingCost: 0,
+          grandTotal: 0, paidAmount: 0, payments: []
+        };
+      }
+      var owing = cvParseNum(amtStr);
+      if (owing > 0) {
+        map[invStr].rows.push({ desc: custName || 'ITEM', qty: 1, price: owing, total: owing, cat: 'UMUM' });
+        map[invStr].subTotal += owing;
+        rowCount++;
+      }
+    });
+
+    var out = Object.keys(map).map(function(k, n) {
+      var inv = map[k];
+      inv.grandTotal = inv.subTotal;
+      inv.finalGrandTotal = inv.grandTotal;
+      return Object.assign({}, inv, { _line: n + 1, _bad: inv.rows.length === 0, _warn: inv.rows.length === 0 ? 'tanpa item' : '' });
+    });
+
+    return { rows: out, errors: [], total: rows.length };
+  }
+
+  function install() {
+    if (typeof window.cvConvInvoices !== 'function') {
+      setTimeout(install, 100);
+      return;
+    }
+    if (window.cvConvInvoices._v27) return;
+
+    var orig = window.cvConvInvoices;
+    window.cvConvInvoices = function(text) {
+      var res = orig.apply(this, arguments);
+      // kalau hasil kosong (paste tanpa header), pakai parser auto-deteksi
+      if (res && (!res.rows || res.rows.length === 0)) {
+        var r2 = parseNoHeader(text);
+        if (r2.rows.length) return r2;
+      }
+      return res;
+    };
+    window.cvConvInvoices._v27 = true;
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install);
+  } else {
+    install();
+  }
+})();
+/* ==========================================================
+   PATCH v28: FAST RESUME — balik aplikasi langsung ke
+   halaman terakhir, draft auto-load tanpa konfirmasi
+   ========================================================== */
+(function() {
+  var KEY = 'bioli_resume_v1';
+
+  /* ---- 1) simpan posisi terakhir ---- */
+  function saveResume() {
+    try {
+      var active = document.querySelector('.page.active');
+      var det = -1;
+      try {
+        if (document.getElementById('historyDetailView').style.display === 'block') det = currentDetailIdx;
+      } catch (e) {}
+      sessionStorage.setItem(KEY, JSON.stringify({
+        ts: Date.now(),
+        page: active ? active.id.replace('page-', '') : 'input',
+        detail: det
+      }));
+    } catch (e) {}
+  }
+
+  document.addEventListener('visibilitychange', function() { if (document.hidden) saveResume(); });
+  window.addEventListener('pagehide', saveResume);
+
+  /* ---- 2) deteksi fast-resume (reload < 15 menit) ---- */
+  var fast = false;
+  try {
+    var raw0 = sessionStorage.getItem(KEY);
+    if (raw0) fast = (Date.now() - JSON.parse(raw0).ts) < 15 * 60 * 1000;
+  } catch (e) {}
+  window.__bioliFastResume = fast;
+
+  function install() {
+    if (typeof window.doNavigateTo !== 'function') {
+      setTimeout(install, 100);
+      return;
+    }
+
+    // tiap pindah halaman → posisi ke-save
+    if (!window.doNavigateTo._v28) {
+      var oNav = window.doNavigateTo;
+      window.doNavigateTo = function() {
+        var r = oNav.apply(this, arguments);
+        setTimeout(saveResume, 0);
+        return r;
+      };
+      window.doNavigateTo._v28 = true;
+    }
+
+    // fast-resume → draft LANGSUNG dimuat, tanpa popup konfirmasi
+    if (typeof window.showConfirm === 'function' && !window.showConfirm._v28) {
+      var oConf = window.showConfirm;
+      window.showConfirm = function(m, cb) {
+        if (window.__bioliFastResume && typeof m === 'string' && m.indexOf('Draft transaksi ditemukan') >= 0) {
+          setTimeout(function() { cb(true); }, 0);
+          return;
+        }
+        return oConf.apply(this, arguments);
+      };
+      window.showConfirm._v28 = true;
+    }
+
+    /* ---- 3) setelah init, lompat ke halaman terakhir ---- */
+    if (window.__bioliFastResume) {
+      setTimeout(function() {
+        try {
+          var d = JSON.parse(sessionStorage.getItem(KEY));
+          if (d.page && d.page !== 'input') doNavigateTo(d.page, false);
+          if (d.detail >= 0) {
+            setTimeout(function() {
+              try { openHistoryDetail(d.detail); } catch (e) {}
+            }, 80);
+          }
+        } catch (e) {}
+      }, 250);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install);
+  } else {
+    install();
+  }
 })();
 </script>
 </body>
