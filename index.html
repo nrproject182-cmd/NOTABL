@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v4.5</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v4.6</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='4.5';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='4.6';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -2636,7 +2636,7 @@ document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){if
       };
     }
   })(WRAP[w])}
-  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v4.5'}catch(e){}
+  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v4.6'}catch(e){}
   try{var sl=document.querySelector('.sp-load');if(sl)sl.textContent='Memuat sistem\u2026'}catch(e){}
   try{repairAll(document.body)}catch(e){}
   setTimeout(function(){try{repairAll(document.body)}catch(e){}},200);
@@ -7511,6 +7511,117 @@ body:has(#cvMergeView[style*="flex"]) .bottom-nav{transform:translateY(112%);opa
     syncBadge();
 
     try { console.log('[v39] aktif: menu Aksi + LK slim'); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+</script>
+<style id="v40-css">
+  /* efek klik + state terpilih */
+  #settlementSummary .psg-card {
+    cursor: pointer;
+    transition: transform .15s var(--ease), box-shadow .2s var(--ease), border-color .2s, background .2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #settlementSummary .psg-card:active { transform: scale(.95); }
+  #settlementSummary .psg-card.sel {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  }
+  #settlementSummary .psg-card .flt-chip {
+    display: none;
+    font-size: 7px; font-weight: 800;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    padding: 1px 6px; border-radius: 8px;
+    margin-left: 6px; vertical-align: 1px;
+  }
+  #settlementSummary .psg-card.sel .flt-chip { display: inline-block; }
+</style>
+
+<script>
+/* ==========================================================
+   PATCH v40: SUMMARY PELUNASAN 2 GRID (CASH / TRANSFER)
+   klik = filter list berdasarkan metode pembayaran
+   ========================================================== */
+(function() {
+  function install() {
+    var sum = document.getElementById('settlementSummary');
+    if (!sum || typeof window.renderSettlementList !== 'function') {
+      setTimeout(install, 150);
+      return;
+    }
+    if (window.__v40) return;
+    window.__v40 = true;
+    window.__settleMethodFilter = '';
+
+    /* ---- ganti 3 kartu jadi 2 kartu klik-able ---- */
+    sum.style.gridTemplateColumns = 'repeat(2,1fr)';
+    sum.innerHTML =
+      '<div class="psg-card green" id="settleCardCash" style="border-left:3px solid var(--cash)">' +
+        '<div class="psg-label">💵 Cash<span class="flt-chip">FILTER AKTIF</span></div>' +
+        '<div class="psg-value" id="settleCashAmt">Rp 0</div>' +
+        '<div class="psg-sub" id="settleCashCnt">0 trx</div>' +
+      '</div>' +
+      '<div class="psg-card blue" id="settleCardTrf" style="border-left:3px solid var(--transfer)">' +
+        '<div class="psg-label">🏦 Transfer<span class="flt-chip">FILTER AKTIF</span></div>' +
+        '<div class="psg-value" id="settleTrfAmt">Rp 0</div>' +
+        '<div class="psg-sub" id="settleTrfCnt">0 trx</div>' +
+      '</div>' +
+      /* span bayangan biar kode asli ga error */
+      '<span id="settleTotalAmt" style="display:none"></span>' +
+      '<span id="settleTotalCnt" style="display:none"></span>' +
+      '<span id="settleAvgAmt" style="display:none"></span>';
+
+    function updateCards() {
+      var all = computeSettlements();
+      var cAmt = 0, cCnt = 0, tAmt = 0, tCnt = 0;
+      all.forEach(function(s) {
+        if (s.cash > 0) { cAmt += s.cash; cCnt++; }
+        if (s.transfer > 0) { tAmt += s.transfer; tCnt++; }
+      });
+      document.getElementById('settleCashAmt').textContent = fmtCurrency(cAmt);
+      document.getElementById('settleCashCnt').textContent = cCnt + ' trx';
+      document.getElementById('settleTrfAmt').textContent = fmtCurrency(tAmt);
+      document.getElementById('settleTrfCnt').textContent = tCnt + ' trx';
+      var f = window.__settleMethodFilter;
+      document.getElementById('settleCardCash').classList.toggle('sel', f === 'cash');
+      document.getElementById('settleCardTrf').classList.toggle('sel', f === 'transfer');
+    }
+
+    /* ---- klik = toggle filter ---- */
+    document.getElementById('settleCardCash').onclick = function() {
+      window.__settleMethodFilter = (window.__settleMethodFilter === 'cash') ? '' : 'cash';
+      renderSettlementList();
+    };
+    document.getElementById('settleCardTrf').onclick = function() {
+      window.__settleMethodFilter = (window.__settleMethodFilter === 'transfer') ? '' : 'transfer';
+      renderSettlementList();
+    };
+
+    /* ---- wrap renderSettlementList: terapkan filter + update kartu ---- */
+    var oR = window.renderSettlementList;
+    window.renderSettlementList = function() {
+      var origCS = window.computeSettlements;
+      var flt = window.__settleMethodFilter;
+      if (flt) {
+        window.computeSettlements = function() {
+          return origCS().filter(function(s) {
+            return flt === 'cash' ? s.cash > 0 : s.transfer > 0;
+          });
+        };
+      }
+      var r;
+      try { r = oR.apply(this, arguments); }
+      finally { window.computeSettlements = origCS; }
+      updateCards();
+      return r;
+    };
+
+    updateCards();
+    try { console.log('[v40] aktif: summary 2 grid + filter metode'); } catch (e) {}
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
