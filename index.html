@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v4.1</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v4.2</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='4.1';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='4.2';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -2636,7 +2636,7 @@ document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){if
       };
     }
   })(WRAP[w])}
-  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v4.1'}catch(e){}
+  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v4.2'}catch(e){}
   try{var sl=document.querySelector('.sp-load');if(sl)sl.textContent='Memuat sistem\u2026'}catch(e){}
   try{repairAll(document.body)}catch(e){}
   setTimeout(function(){try{repairAll(document.body)}catch(e){}},200);
@@ -6140,48 +6140,56 @@ body:has(#cvMergeView[style*="flex"]) .bottom-nav{transform:translateY(112%);opa
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
   else install();
 })();
-<style id="v30-css">
-  /* lebarin input nomor biar 6 digit muat */
-  #invNumInput { width: 76px; min-width: 76px; letter-spacing: -.2px; }
-  @media(max-width:480px) { #invNumInput { width: 60px; min-width: 60px; } }
+</script>
+<style id="v31-css">
+  #invNumInput { width: 78px; min-width: 78px; }
+  @media(max-width:480px) { #invNumInput { width: 62px; min-width: 62px; } }
   @media(max-width:360px) { #invNumInput { width: 56px; min-width: 56px; } }
 </style>
 
 <script>
 /* ==========================================================
-   PATCH v30: NOMOR NOTA 6 DIGIT (000001)
-   - padInvNum 4 → 6 digit
-   - batas max 9999 → 999999
+   PATCH v31: 6 DIGIT (FORCE) + DISKON RETUR/PI = NOTA
    ========================================================== */
 (function() {
   var MAX = 999999;
 
+  function isPM(s) { return /\(PM\)\s*$/i.test(String(s == null ? '' : s).trim()); }
+
+  // hitung diskon kategori yg sama persis dgn nota (skip item PM)
+  function discForRows(rows, cust) {
+    var d = 0;
+    (rows || []).forEach(function(r) {
+      if (isPM(r.desc)) return;
+      var im = findItemByDesc(r.desc);
+      var cat = im ? im.cat : (r.cat || '');
+      if (cat && cust && cust.disc && cust.disc[cat] > 0) d += (r.total || 0) * cust.disc[cat] / 100;
+    });
+    return d;
+  }
+
   function install() {
-    if (typeof window.padInvNum !== 'function') {
+    if (typeof window.padInvNum !== 'function' ||
+        typeof window.saveReturFromTable !== 'function') {
       setTimeout(install, 100);
       return;
     }
-    if (window.padInvNum._v30) return;
+    if (window.padInvNum._v31) return;
 
-    /* ---- 1) padding 6 digit (otomatis kepake semua fungsi) ---- */
-    window.padInvNum = function(n) {
-      return String(n).padStart(6, '0');
-    };
-    window.padInvNum._v30 = true;
+    /* ============ BAGIAN 1: 6 DIGIT (FORCE) ============ */
+    window.padInvNum = function(n) { return String(n).padStart(6, '0'); };
+    window.padInvNum._v31 = true;
 
-    /* ---- 2) input manual: batas 999999 ---- */
     window.onInvNumChange = function() {
       var inp = document.getElementById('invNumInput');
       var val = inp.value.trim().toLowerCase();
-
       for (var i = 0; i < manualInvTriggerCodes.length; i++) {
         if (val === manualInvTriggerCodes[i]) {
           if (manualInvMode) {
             manualInvMode = false; manualInvNumber = '';
             localStorage.setItem('manualInvMode', 'false');
             localStorage.removeItem('manualInvNumber');
-            inp.classList.remove('manual-mode');
-            inp.placeholder = '';
+            inp.classList.remove('manual-mode'); inp.placeholder = '';
             inp.value = padInvNum((getInvCounter(getCounterTypeForMode(isPiMode ? 'pi' : currentMode)).lastNum || 0) + 1);
             invUserEdited = false;
             alertSuccess('Mode otomatis');
@@ -6189,15 +6197,13 @@ body:has(#cvMergeView[style*="flex"]) .bottom-nav{transform:translateY(112%);opa
             manualInvMode = true; manualInvNumber = '';
             localStorage.setItem('manualInvMode', 'true');
             localStorage.setItem('manualInvNumber', '');
-            inp.classList.add('manual-mode');
-            inp.value = '';
+            inp.classList.add('manual-mode'); inp.value = '';
             inp.placeholder = 'No. Manual...';
             alertWarning('Mode manual aktif');
           }
           return;
         }
       }
-
       if (manualInvMode) {
         invUserEdited = true;
         manualInvNumber = inp.value.trim();
@@ -6209,15 +6215,13 @@ body:has(#cvMergeView[style*="flex"]) .bottom-nav{transform:translateY(112%);opa
       }
     };
 
-    /* ---- 3) tombol +/- : batas 999999 ---- */
     window.invStep = function(d) {
       var inp = document.getElementById('invNumInput');
       if (manualInvMode) {
         manualInvMode = false; manualInvNumber = '';
         localStorage.setItem('manualInvMode', 'false');
         localStorage.removeItem('manualInvNumber');
-        inp.classList.remove('manual-mode');
-        inp.placeholder = '';
+        inp.classList.remove('manual-mode'); inp.placeholder = '';
         inp.value = padInvNum(Math.max(1, Math.min(MAX, (getInvCounter(getCounterTypeForMode(isPiMode ? 'pi' : currentMode)).lastNum || 0) + 1 + d)));
         invUserEdited = true;
         return;
@@ -6225,21 +6229,17 @@ body:has(#cvMergeView[style*="flex"]) .bottom-nav{transform:translateY(112%);opa
       var c = parseInt(inp.value) || 1;
       inp.value = padInvNum(Math.max(1, Math.min(MAX, c + d)));
       invUserEdited = true;
-      inp.focus();
-      inp.select();
+      inp.focus(); inp.select();
     };
 
-    /* ---- 4) consume nomor saat simpan ---- */
     window.consumeInvNo = function(mode) {
       var m = mode || (isPiMode ? 'pi' : currentMode);
       var ct = getCounterTypeForMode(m);
       var c = getInvCounter(ct);
       var inp = document.getElementById('invNumInput');
-
       var requested = null;
       if (manualInvMode && manualInvNumber) requested = manualInvNumber;
       else if (invUserEdited) requested = inp.value.trim();
-
       var full, usedNum = null;
       if (requested !== null && requested !== '') {
         var isNum = /^\d+$/.test(requested);
@@ -6253,24 +6253,186 @@ body:has(#cvMergeView[style*="flex"]) .bottom-nav{transform:translateY(112%);opa
         full = getPrefixForMode(m) + padInvNum(nn);
         usedNum = nn;
       }
-
-      if (usedNum !== null && usedNum > (c.lastNum || 0)) {
-        c.lastNum = usedNum;
-        saveInvCounter(ct, c);
-      }
-
+      if (usedNum !== null && usedNum > (c.lastNum || 0)) { c.lastNum = usedNum; saveInvCounter(ct, c); }
       manualInvMode = false; manualInvNumber = '';
       localStorage.setItem('manualInvMode', 'false');
       localStorage.removeItem('manualInvNumber');
-      inp.classList.remove('manual-mode');
-      inp.placeholder = '';
+      inp.classList.remove('manual-mode'); inp.placeholder = '';
       inp.value = padInvNum((c.lastNum || 0) + 1);
       invUserEdited = false;
       return full;
     };
 
-    // refresh preview nomor biar langsung 6 digit
-    try { setInvNumPreview(); } catch (e) {}
+    // FORCE refresh tampilan nomor (biar pasti 6 digit)
+    function refreshNum() { try { setInvNumPreview(); } catch (e) {} }
+    refreshNum();
+    window.addEventListener('load', refreshNum);
+    setTimeout(refreshNum, 300);
+    setTimeout(refreshNum, 1200);
+
+    /* ============ BAGIAN 2: DISKON RETUR/PI = NOTA ============ */
+
+    // calculateAll: diskon jalan di SEMUA mode (nota/retur/order/PI)
+    window.calculateAll = function() {
+      var subTotal = 0, discTotal = 0, discDetails = [];
+      document.querySelectorAll('#inputRows tr').forEach(function(tr) {
+        var ts = tr.querySelector('.total-input').value;
+        if (!ts) return;
+        var total = parseMoney(ts);
+        subTotal += total;
+        if (!isPM(descOf(tr))) {
+          var im = findItemByRow(tr);
+          var rc = im ? im.cat : '';
+          var ad = 0;
+          if (rc && currentCustomer && currentCustomer.disc) {
+            var dp = currentCustomer.disc[rc] || 0;
+            if (dp > 0) ad = dp;
+          }
+          if (ad > 0) {
+            var da = total * ad / 100;
+            discTotal += da;
+            var ex = discDetails.find(function(d) { return d.cat === rc; });
+            if (ex) ex.amount += da; else discDetails.push({ cat: rc, pct: ad, amount: da });
+          }
+        }
+      });
+      var _ongkir = (currentMode === 'nota' && !isPiMode) ? (parseDecField('inputOngkir') || 0) : 0;
+      var barangTotal = Math.max(0, subTotal - discTotal);
+      var grandTotal = barangTotal + _ongkir;
+      document.getElementById('subTotal').innerText = fmtCurrencyFull(subTotal);
+      document.getElementById('grandTotal').innerText = fmtCurrencyFull(grandTotal);
+      var dr = document.getElementById('discRow');
+      if (dr) {
+        dr.style.display = discTotal > 0 ? 'flex' : 'none';
+        document.getElementById('discTotalVal').innerText = '- ' + fmtCurrencyFull(discTotal);
+      }
+      var oi = document.getElementById('inputOngkir');
+      if (oi) {
+        if (_ongkir <= 0) { oi.value = ''; }
+        else { oi.value = (_ongkir % 1 === 0) ? _ongkir.toLocaleString('id-ID') : _ongkir.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+      }
+      if (discDetails.length) {
+        document.getElementById('discDetailText').innerHTML = '<svg class="ei"><use href="#icon-tag"/></svg> Diskon: ' + discDetails.map(function(d) { return d.cat + ' ' + d.pct + '% = ' + fmtCurrencyFull(d.amount); }).join(' • ');
+      } else if (subTotal > 0) {
+        document.getElementById('discDetailText').innerText = currentCustomer ? 'Tidak ada diskon' : 'Pilih customer';
+      } else {
+        document.getElementById('discDetailText').innerText = '';
+      }
+    };
+
+    // saveReturFromTable: diskon dihitung (harga retur = harga jual net)
+    window.saveReturFromTable = function() {
+      if (!returSourceTx) return alertWarning('Pilih faktur asal!');
+      var rows = [];
+      document.querySelectorAll('#inputRows tr').forEach(function(tr) {
+        var desc = descOf(tr);
+        var qty = parseFloat(tr.querySelector('.qty-input').value) || 0;
+        var price = parseMoney(tr.querySelector('.price-input').value);
+        if (desc && qty > 0) rows.push({ desc: desc, qty: qty, price: price, total: qty * price, cat: tr.querySelector('.cat-input').value || '' });
+      });
+      if (!rows.length) return alertWarning('Tidak ada item retur!');
+      var rt = rows.reduce(function(s, r) { return s + r.total; }, 0);
+      var disc = discForRows(rows, returSourceTx.cust || currentCustomer);
+      var net = Math.max(0, rt - disc);
+      showDangerConfirm('Proses retur senilai <b>' + fmtCurrencyFull(net) + '</b>?' + (disc > 0 ? '<br><small>Diskon kategori: -' + fmtCurrencyFull(disc) + '</small>' : ''), function(cf) {
+        if (!cf) return;
+        var invNo = consumeInvNo('retur');
+        if (!invNo) return invDupWarning();
+        var rtx = { invNo: invNo, date: new Date().toISOString(), cust: Object.assign({}, returSourceTx.cust || {}), rows: rows, subTotal: rt, discTotal: disc, specialDiscAmount: 0, ongkir: 0, grandTotal: net, finalGrandTotal: net, isRetur: true, isPi: false, isCash: false, isTransfer: false, isOrder: false, isCancelled: false, originalInvNo: returSourceTx.invNo, _source: 'manual' };
+        var hist = JSON.parse(localStorage.getItem('txHistory')) || [];
+        hist.unshift(rtx);
+        try { localStorage.setItem('txHistory', JSON.stringify(hist)); } catch (e) { alertDanger('Storage penuh!'); }
+        rows.forEach(function(r) {
+          var item = findItemByDesc(r.desc);
+          if (item) {
+            stockData[item.name] = (stockData[item.name] || 0) + r.qty;
+            stockLog.unshift({ item: item.name, type: 'in', qty: r.qty, note: 'Retur: ' + invNo, date: new Date().toISOString() });
+          }
+        });
+        saveStockData();
+        alertSuccess('Retur berhasil! <b>' + invNo + '</b> • ' + fmtCurrencyFull(net));
+        returSourceTx = null; modeStates.retur.sourceTx = null; modeStates.retur.rows = [];
+        resetTransactionUI();
+      });
+    };
+
+    // savePiTransaction: diskon dihitung juga
+    window.savePiTransaction = function() {
+      if (!currentCustomer) return alertWarning('Pilih customer!');
+      var rows = [];
+      document.querySelectorAll('#inputRows tr').forEach(function(tr) {
+        var desc = descOf(tr);
+        var qty = parseFloat(tr.querySelector('.qty-input').value) || 0;
+        var price = parseMoney(tr.querySelector('.price-input').value);
+        if (desc && qty > 0) rows.push({ desc: desc, qty: qty, price: price, total: qty * price, cat: tr.querySelector('.cat-input').value || '' });
+      });
+      if (!rows.length) return alertWarning('Tidak ada item!');
+      var rt = rows.reduce(function(s, r) { return s + r.total; }, 0);
+      var disc = discForRows(rows, currentCustomer);
+      var net = Math.max(0, rt - disc);
+      showConfirm('Simpan PI senilai <b>' + fmtCurrencyFull(net) + '</b>?' + (disc > 0 ? '<br><small>Diskon kategori: -' + fmtCurrencyFull(disc) + '</small>' : ''), function(cf) {
+        if (!cf) return;
+        var invNo = consumeInvNo('pi');
+        if (!invNo) return invDupWarning();
+        var ptx = { invNo: invNo, date: new Date().toISOString(), cust: Object.assign({}, currentCustomer), rows: rows, subTotal: rt, discTotal: disc, specialDiscAmount: 0, ongkir: 0, grandTotal: net, finalGrandTotal: net, isRetur: false, isPi: true, isCash: false, isTransfer: false, isOrder: false, isCancelled: false, originalInvNo: null, _source: 'manual' };
+        var hist = JSON.parse(localStorage.getItem('txHistory')) || [];
+        hist.unshift(ptx);
+        try { localStorage.setItem('txHistory', JSON.stringify(hist)); } catch (e) { alertDanger('Storage penuh!'); }
+        rows.forEach(function(r) {
+          var item = findItemByDesc(r.desc);
+          if (item) {
+            stockData[item.name] = (stockData[item.name] || 0) + r.qty;
+            stockLog.unshift({ item: item.name, type: 'in', qty: r.qty, note: 'PI: ' + invNo, date: new Date().toISOString() });
+          }
+        });
+        saveStockData();
+        syncToActiveLKReport('invoices', { id: ptx.invNo, amount: net, desc: ptx.invNo + ' (PI)', date: ptx.date });
+        alertSuccess('PI Tersimpan! <b>' + invNo + '</b> • ' + fmtCurrencyFull(net));
+        resetTransactionUI();
+      });
+    };
+
+    // processPiCut (PI Potong dari modal): diskon dihitung juga
+    if (typeof window.processPiCut === 'function') {
+      var oCut = window.processPiCut;
+      window.processPiCut = function() {
+        if (!piCutSourceTx) return;
+        // hitung ulang summary dgn diskon biar presisi
+        var rows = [];
+        piCutSourceTx.rows.forEach(function(r, i) {
+          var chk = document.getElementById('piCutChk' + i);
+          var qty = document.getElementById('piCutQty' + i);
+          if (chk && chk.checked && qty) {
+            var q = Math.min(parseInt(qty.value) || 0, r.qty);
+            if (q > 0) rows.push({ desc: r.desc, qty: q, price: parseMoney(r.price), total: q * parseMoney(r.price), cat: r.cat || '' });
+          }
+        });
+        if (!rows.length) return alertWarning('Pilih minimal 1 item!');
+        var gross = rows.reduce(function(s, r) { return s + r.total; }, 0);
+        var disc = discForRows(rows, piCutSourceTx.cust);
+        var net = Math.max(0, gross - disc);
+        showConfirm('Proses PI Potong <b>' + fmtCurrencyFull(net) + '</b>?' + (disc > 0 ? '<br><small>Diskon kategori: -' + fmtCurrencyFull(disc) + '</small>' : ''), function(cf) {
+          if (!cf) return;
+          var invNo = consumeInvNo('pi');
+          if (!invNo) return invDupWarning();
+          var ptx = { invNo: invNo, date: new Date().toISOString(), cust: Object.assign({}, piCutSourceTx.cust || {}), rows: rows, subTotal: gross, discTotal: disc, specialDiscAmount: 0, ongkir: 0, grandTotal: net, finalGrandTotal: net, isRetur: false, isPi: true, isPiCut: true, isCash: false, isTransfer: false, isOrder: false, isCancelled: false, originalInvNo: piCutSourceTx.invNo, _source: 'manual' };
+          var hist = JSON.parse(localStorage.getItem('txHistory')) || [];
+          hist.unshift(ptx);
+          try { localStorage.setItem('txHistory', JSON.stringify(hist)); } catch (e) { alertDanger('Storage penuh!'); }
+          rows.forEach(function(r) {
+            var item = findItemByDesc(r.desc);
+            if (item) {
+              stockData[item.name] = (stockData[item.name] || 0) + r.qty;
+              stockLog.unshift({ item: item.name, type: 'in', qty: r.qty, note: 'PI Potong: ' + invNo, date: new Date().toISOString() });
+            }
+          });
+          saveStockData();
+          closeModal('piCutModal');
+          alertSuccess('PI Potong <b>' + invNo + '</b> • ' + fmtCurrencyFull(net));
+          resetTransactionUI();
+        });
+      };
+    }
   }
 
   if (document.readyState === 'loading') {
@@ -6279,7 +6441,6 @@ body:has(#cvMergeView[style*="flex"]) .bottom-nav{transform:translateY(112%);opa
     install();
   }
 })();
-</script>
 </script>
 </body>
 </html>

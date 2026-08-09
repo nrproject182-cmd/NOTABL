@@ -1,7 +1,7 @@
 {
-  "version": "4.1",
+  "version": "4.2",
   "releaseDate": "2026-08-06",
   "minVersion": "3.0",
   "forceUpdate": false,
-  "notes": "v4.1: icon FULL PNG asli, manifest & SW bersih, laporan harian, CMM hanya pelunasan, anti-blokir jatuh tempo, nama barang 2 baris, filter kategori+promo, fix sinkron LK."
+  "notes": "v4.2: icon FULL PNG asli, manifest & SW bersih, laporan harian, CMM hanya pelunasan, anti-blokir jatuh tempo, nama barang 2 baris, filter kategori+promo, fix sinkron LK."
 }
