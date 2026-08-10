@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v4.6</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v4.7</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='4.6';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='4.7';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -2636,7 +2636,7 @@ document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){if
       };
     }
   })(WRAP[w])}
-  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v4.6'}catch(e){}
+  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v4.7'}catch(e){}
   try{var sl=document.querySelector('.sp-load');if(sl)sl.textContent='Memuat sistem\u2026'}catch(e){}
   try{repairAll(document.body)}catch(e){}
   setTimeout(function(){try{repairAll(document.body)}catch(e){}},200);
@@ -7622,6 +7622,249 @@ body:has(#cvMergeView[style*="flex"]) .bottom-nav{transform:translateY(112%);opa
 
     updateCards();
     try { console.log('[v40] aktif: summary 2 grid + filter metode'); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+/* ==========================================================
+   PATCH v41: MATCH KODE IMPOR FLEKSIBEL
+   "KZ-1166-004-BL" = "KZ-1166-004 BL" = "KZ1166004BL"
+   (spasi / strip / underscore dianggap sama)
+   ========================================================== */
+(function() {
+  // normalisasi: buang spasi, strip, underscore, uppercase
+  function normCode(s) {
+    return String(s || '').toUpperCase().replace(/[\s_\-]+/g, '');
+  }
+
+  function install() {
+    if (typeof window.processUnifiedImport !== 'function' || typeof items === 'undefined') {
+      setTimeout(install, 120);
+      return;
+    }
+    if (window.__v41) return;
+    window.__v41 = true;
+
+    var oPI = window.processUnifiedImport;
+    window.processUnifiedImport = function(type, data) {
+      if ((type === 'item_stock' || type === 'item_master') && Array.isArray(data)) {
+        // indeks master bằng kode ternormalisasi
+        var byNorm = {};
+        items.forEach(function(i) {
+          if (i.code) byNorm[normCode(i.code)] = i;
+        });
+
+        data.forEach(function(row) {
+          var c = row.code || row.kode || '';
+          if (!c) return;
+          var exact = items.some(function(i) {
+            return i.code && String(i.code).toUpperCase() === String(c).toUpperCase();
+          });
+          if (!exact) {
+            var m = byNorm[normCode(c)];
+            if (m) {
+              // samakan dengan kode master → impor stok jadi ketemu,
+              // dan impor master jadi kedeteksi duplikat (bukan barang kembar)
+              row.code = m.code;
+            }
+          }
+        });
+      }
+      return oPI.apply(this, arguments);
+    };
+
+    try { console.log('[v41] aktif: match kode fleksibel'); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+/* ==========================================================
+   PATCH v41B: EDIT BARIS BERMASALAH DI CONVERTER
+   - Tombol "🛠 Perbaiki Bermasalah (N)" muncul otomatis
+   - List baris bermasalah + sebabnya
+   - Edit lewat popup → QC & JSON langsung update
+   ========================================================== */
+(function() {
+  function escT(s) { return typeof escapeHtml === 'function' ? escapeHtml(s) : String(s == null ? '' : s); }
+  function labelOf(r) { return r.invNo || r.code || r.name || '(tanpa identitas)'; }
+  function reasonOf(r) { return r._error || r._warn || ''; }
+
+  function install() {
+    if (typeof window.cvRender !== 'function' || typeof CV === 'undefined') {
+      setTimeout(install, 150);
+      return;
+    }
+    if (window.__v41b) return;
+    window.__v41b = true;
+
+    /* ---- inject UI di kartu hasil ---- */
+    var banner = document.getElementById('cvBanner');
+    if (banner && !document.getElementById('cvFixWrap')) {
+      var wrap = document.createElement('div');
+      wrap.id = 'cvFixWrap';
+      wrap.style.cssText = 'margin:0 0 10px';
+      wrap.innerHTML =
+        '<button id="cvFixBtn" type="button" class="cv-btn" style="width:100%;justify-content:center;background:color-mix(in srgb,var(--warning) 12%,var(--surface));border-color:color-mix(in srgb,var(--warning) 45%,var(--border));color:var(--warning);font-weight:800">🛠 Perbaiki Bermasalah (0)</button>' +
+        '<div id="cvFixList" style="display:none;margin-top:8px;border:1px solid var(--border);border-radius:11px;max-height:280px;overflow-y:auto;background:var(--surface)"></div>';
+      banner.insertAdjacentElement('afterend', wrap);
+      document.getElementById('cvFixBtn').onclick = function() {
+        var l = document.getElementById('cvFixList');
+        l.style.display = (l.style.display === 'none') ? 'block' : 'none';
+      };
+    }
+
+    /* ---- panel list bermasalah ---- */
+    function updatePanel() {
+      var btn = document.getElementById('cvFixBtn');
+      var list = document.getElementById('cvFixList');
+      if (!btn || !list) return;
+      var bads = [];
+      (CV.rows || []).forEach(function(r, i) { if (r._bad || r._warn) bads.push({ r: r, i: i }); });
+      btn.innerHTML = '🛠 Perbaiki Bermasalah (' + bads.length + ')';
+      btn.style.display = bads.length ? '' : 'none';
+      if (!bads.length) { list.style.display = 'none'; list.innerHTML = ''; return; }
+      list.innerHTML = bads.map(function(b) {
+        return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);font-size:10.5px">' +
+          '<span style="flex:1;min-width:0"><b style="color:' + (b.r._bad ? 'var(--danger)' : 'var(--warning)') + '">' + (b.r._bad ? '✖' : '⚠') + ' #' + (b.r._line || b.i + 1) + '</b> ' +
+          escT(labelOf(b.r)) + '<br><small style="color:var(--text-light)">' + escT(reasonOf(b.r)) + '</small></span>' +
+          '<button type="button" data-fix="' + b.i + '" class="cv-btn" style="flex-shrink:0;padding:6px 10px">✎ Edit</button></div>';
+      }).join('');
+      Array.prototype.forEach.call(list.querySelectorAll('[data-fix]'), function(el) {
+        el.onclick = function() { openFix(parseInt(el.getAttribute('data-fix'), 10)); };
+      });
+    }
+
+    /* ---- reflag setelah edit ---- */
+    function reflag(r) {
+      var t = CV.tab;
+      if (t === 'products') {
+        r._bad = !r.name;
+        r._error = r._bad ? 'nama kosong' : null;
+        r._warn = (typeof r.price !== 'number' || r.price <= 0) ? 'harga 0' : ((r.stock || 0) < 0 ? 'stok negatif' : '');
+      } else if (t === 'prtn' || t === 'piston') {
+        r._bad = !r.name && !r.code;
+        r._error = r._bad ? 'nama & kode kosong' : null;
+        r._warn = (typeof r.price !== 'number') ? 'harga non-angka' : '';
+      } else if (t === 'customers') {
+        r._bad = !r.code || !r.name;
+        r._error = r._bad ? 'Kode/Nama kosong' : null;
+        r._warn = (r.tempo <= 0) ? 'tempo 0 (tunai)' : '';
+      } else if (t === 'invoices') {
+        r._bad = !r.rows || r.rows.length === 0;
+        r._error = null;
+        r._warn = r._bad ? 'tanpa item' : '';
+      } else if (t === 'stock') {
+        r._bad = !r.code && !r.name;
+        r._error = r._bad ? 'Identitas kosong' : null;
+        r._warn = (r.qty < 0) ? 'qty negatif' : '';
+      }
+    }
+
+    /* ---- popup edit per tab ---- */
+    function openFix(i) {
+      var r = CV.rows[i];
+      if (!r) return;
+      var t = CV.tab, fields = [];
+      if (t === 'customers') {
+        fields = [
+          { key: 'code', label: 'Kode', type: 'text', value: r.code || '' },
+          { key: 'name', label: 'Nama', type: 'text', value: r.name || '' },
+          { key: 'tempo', label: 'Tempo', type: 'text', value: String(r.tempo || 0) },
+          { key: 'sales', label: 'Sales', type: 'text', value: r.sales || '' }
+        ];
+      } else if (t === 'invoices') {
+        fields = [
+          { key: 'inv', label: 'No Invoice', type: 'text', value: r.invNo || '' },
+          { key: 'date', label: 'Tanggal (YYYY-MM-DD)', type: 'text', value: (r.date || '').slice(0, 10) },
+          { key: 'cust', label: 'Customer', type: 'text', value: (r.cust && r.cust.name) || '' },
+          { key: 'amt', label: 'Nominal', type: 'text', value: String(r.grandTotal || 0) }
+        ];
+      } else if (t === 'stock') {
+        fields = [
+          { key: 'code', label: 'Kode', type: 'text', value: r.code || '' },
+          { key: 'name', label: 'Nama', type: 'text', value: r.name || '' },
+          { key: 'qty', label: 'Qty', type: 'text', value: String(r.qty || 0) }
+        ];
+      } else {
+        fields = [
+          { key: 'name', label: 'Nama', type: 'text', value: r.name || '' },
+          { key: 'code', label: 'Kode', type: 'text', value: r.code || '' },
+          { key: 'size', label: 'Size / OS', type: 'text', value: r.size || '' },
+          { key: 'price', label: 'Harga', type: 'text', value: String(typeof r.price === 'number' ? r.price : (r.price || '')) }
+        ];
+        if (t === 'products') {
+          fields.push({ key: 'cat', label: 'Kategori', type: 'text', value: r.cat || '' });
+          fields.push({ key: 'stock', label: 'Stok', type: 'text', value: String(r.stock || 0) });
+        }
+      }
+      enqueuePopup({
+        type: 'form',
+        title: '✎ Edit Baris #' + (r._line || i + 1),
+        message: 'Sebab: <b>' + escT(reasonOf(r)) + '</b>',
+        fields: fields,
+        onConfirm: function(d) { applyFix(i, d); }
+      });
+    }
+
+    /* ---- terapkan hasil edit ---- */
+    function applyFix(i, d) {
+      var r = CV.rows[i];
+      if (!r) return;
+      var t = CV.tab;
+      if (t === 'customers') {
+        r.code = (d.code || '').trim().toUpperCase();
+        r.name = (d.name || '').trim().toUpperCase();
+        r.tempo = parseInt(d.tempo, 10) || 0;
+        r.sales = (d.sales || '').trim();
+      } else if (t === 'invoices') {
+        r.invNo = (d.inv || '').trim();
+        if (d.date) r.date = cvParseDate(d.date);
+        var cn = (d.cust || '').trim();
+        if (r.cust) r.cust.name = cn.toUpperCase();
+        else r.cust = { code: '', name: cn.toUpperCase(), tempo: 0, disc: {}, sales: '' };
+        var amt = parseMoney(d.amt) || 0;
+        if (amt > 0) {
+          if (!r.rows || !r.rows.length) r.rows = [{ desc: cn || 'ITEM', qty: 1, price: amt, total: amt, cat: 'UMUM' }];
+          else { r.rows[0].price = amt; r.rows[0].total = amt; if (cn) r.rows[0].desc = cn; }
+          r.subTotal = amt; r.grandTotal = amt; r.finalGrandTotal = amt;
+        }
+      } else if (t === 'stock') {
+        r.code = (d.code || '').trim();
+        r.name = (d.name || '').trim();
+        r.qty = parseInt(d.qty, 10) || 0;
+      } else {
+        r.name = (d.name || '').trim();
+        r.code = (d.code || '').trim();
+        r.size = (d.size || '').trim();
+        if (d.price !== '' && d.price != null) r.price = parseMoney(d.price);
+        if (t === 'products') {
+          r.cat = (d.cat || '').trim() || 'UMUM';
+          r.stock = parseInt(d.stock, 10) || 0;
+        }
+      }
+      reflag(r);
+      cvRefresh();
+    }
+
+    /* ---- refresh QC + preview + JSON ---- */
+    function cvRefresh() {
+      var errs = (CV.rows || []).filter(function(r) { return r._error; }).map(function(r) {
+        return { line: r._line || 0, code: r.code || '-', name: r.name || '-', reason: r._error };
+      });
+      cvRender({ rows: CV.rows, errors: errs, total: CV.total || (CV.rows || []).length });
+    }
+
+    /* ---- panel auto-update tiap kali render ---- */
+    var oRender = window.cvRender;
+    window.cvRender = function(res) {
+      var r = oRender.apply(this, arguments);
+      setTimeout(updatePanel, 0);
+      return r;
+    };
+
+    try { console.log('[v41b] aktif: edit baris bermasalah'); } catch (e) {}
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
