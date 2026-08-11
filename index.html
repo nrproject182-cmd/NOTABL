@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v5.0</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v5.1</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='5.0';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='5.1';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -2636,7 +2636,7 @@ document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){if
       };
     }
   })(WRAP[w])}
-  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v5.0'}catch(e){}
+  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v5.1'}catch(e){}
   try{var sl=document.querySelector('.sp-load');if(sl)sl.textContent='Memuat sistem\u2026'}catch(e){}
   try{repairAll(document.body)}catch(e){}
   setTimeout(function(){try{repairAll(document.body)}catch(e){}},200);
@@ -8299,6 +8299,102 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
     };
 
     try { console.log('[v50] header rincian rapi'); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v51:
+   1) FIX BUG TITIP — ketik cash partial ga ketimpa lagi
+   2) Ketik TRANSFER → CASH otomatis berkurang (sisa - transfer)
+   Berlaku di: Bayar nota, Bayar history, Multi-pay
+   ========================================================== */
+(function() {
+  function install() {
+    if (!document.getElementById('histPayCash') || typeof window.recalcHistPay !== 'function') {
+      setTimeout(install, 120);
+      return;
+    }
+    if (window.__v51) return;
+    window.__v51 = true;
+
+    /* ---- override recalc: cash auto = efektif − transfer ---- */
+    window.recalcHistPay = function() {
+      var spec = getHistPaySpec();
+      var eff = Math.max(0, histPayRem - spec);
+      if (!histPayCashEdited) {
+        var trf = parseDecField('histPayTransfer');
+        setMoneyDec('histPayCash', Math.max(0, eff - trf));
+      }
+      updateHistPaySummary(eff);
+    };
+
+    window.recalcMultiPay = function() {
+      var spec = getMultiPaySpec();
+      var eff = Math.max(0, multiPayTotal - spec);
+      if (!multiPayCashEdited) {
+        var trf = parseDecField('multiPayTransfer');
+        setMoneyDec('multiPayCash', Math.max(0, eff - trf));
+      }
+      updateMultiPaySummary(eff);
+    };
+
+    window.recalcPayModal = function(setCashDefault) {
+      var sub = payRecSubVal, disc = payRecDiscVal, spec = getSpecialFromPopup(sub);
+      var grandFinal = Math.max(0, sub - disc - spec) + (payRecOngkirVal || 0);
+      currentPayGrand = grandFinal;
+      var sRow = document.getElementById('payRecSpecRow');
+      if (sRow) { sRow.style.display = spec > 0 ? 'flex' : 'none'; var sv = document.getElementById('payRecSpec'); if (sv) sv.innerText = '- ' + fmtCurrencyFull(spec); }
+      var oRow = document.getElementById('payRecOngkirRow');
+      if (oRow) { oRow.style.display = payRecOngkirVal > 0 ? 'flex' : 'none'; var oV = document.getElementById('payRecOngkir'); if (oV) oV.innerText = fmtCurrencyFull(payRecOngkirVal); }
+      var gEl = document.getElementById('payRecGrand'); if (gEl) gEl.innerText = fmtCurrencyFull(grandFinal);
+      if (setCashDefault || !payCashUserEdited) {
+        var trf2 = parseDecField('payTransfer');
+        setMoneyDec('payCash', Math.max(0, grandFinal - trf2));
+      }
+      updatePaySummaryLive(grandFinal);
+    };
+
+    /* ---- lepas handler inline yang buggy, pasang logika benar ---- */
+    function wire(cashId, trfId, setEdited, recalc, summary) {
+      var c = document.getElementById(cashId), t = document.getElementById(trfId);
+      if (!c || !t || c._wired51) return;
+      c._wired51 = true;
+      c.oninput = null;   // buang auto-isi yang nimpa ketikan
+      t.oninput = null;
+      /* ketik CASH = manual, bebas (titip aman) */
+      c.addEventListener('input', function() {
+        formatMoneyDec(c);
+        setEdited(true);
+        summary();
+      });
+      /* ketik TRANSFER = cash otomatis sisa−transfer */
+      t.addEventListener('input', function() {
+        formatMoneyDec(t);
+        setEdited(false);
+        recalc();
+      });
+    }
+
+    wire('histPayCash', 'histPayTransfer',
+      function(v) { histPayCashEdited = v; },
+      function() { recalcHistPay(); },
+      function() { updateHistPaySummary(); });
+
+    wire('multiPayCash', 'multiPayTransfer',
+      function(v) { multiPayCashEdited = v; },
+      function() { recalcMultiPay(); },
+      function() { updateMultiPaySummary(); });
+
+    wire('payCash', 'payTransfer',
+      function(v) { payCashUserEdited = v; },
+      function() { recalcPayModal(false); },
+      function() { updatePaySummaryLive(currentPayGrand); });
+
+    try { console.log('[v51] fix titip + auto cash-transfer aktif'); } catch (e) {}
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
