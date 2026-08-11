@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v4.9</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v5.0</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='4.9';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='5.0';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -2636,7 +2636,7 @@ document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){if
       };
     }
   })(WRAP[w])}
-  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v4.9'}catch(e){}
+  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v5.0'}catch(e){}
   try{var sl=document.querySelector('.sp-load');if(sl)sl.textContent='Memuat sistem\u2026'}catch(e){}
   try{repairAll(document.body)}catch(e){}
   setTimeout(function(){try{repairAll(document.body)}catch(e){}},200);
@@ -8052,30 +8052,45 @@ function fH(){
 fB();fC();fD();fE();fF();fG();fH();
 try{console.log('[v45 FINAL] aktif');}catch(e){}
 })();
+<style id="v49-css">
+@media (orientation: landscape) {
+  .container { height:auto; min-height:100dvh; overflow:visible; }
+  .page, .page.active, #page-input.page { display:block !important; height:auto !important; overflow:visible !important; }
+  .page-content, #page-input .page-content { overflow:visible !important; height:auto !important; min-height:0; }
+  .pro-header, #page-input .trans-header { position:static !important; }
+  #historyListView, #lkDetailView { display:block !important; flex:none; overflow:visible; }
+  .history-list, .master-list-wrapper, .report-container, #historyDetailView, .lk-detail-page { overflow:visible !important; height:auto !important; max-height:none !important; flex:none !important; }
+  .table-wrapper table { overflow:visible; }
+}
+</style>
+</script>
+<script>
 /* ==========================================================
-   PATCH v46: FIX FILTER JATUH TEMPO (ANTI-KETIMPA)
-   Hanya nota yang udah LEWAT / PAS hari deadline pembayaran
-   Contoh: nota 1 Juli + tempo 30 → mulai 31 Juli/1 Agu muncul
+   PATCH v49 FINAL = pengganti v46+v47+v48 (anti-ketimpa)
+   1) Filter JT: hanya LEWAT / pas hari H
+   2) Badge H-x muncul lagi di list
+   3) Rincian: Tgl Nota + Tempo + Jatuh Tempo di KANAN
+   4) Landscape: header scroll, ga melayang
    ========================================================== */
 (function() {
   function isLK(tx) { return tx && (tx.region === 'LKOTM' || tx.region === 'LKPRT'); }
-
+  function fD2(d) { return new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
   function duePassed(tx, ha) {
     if (tx.isCancelled || tx.isRetur || tx.isPi || tx.isOrder) return false;
-    if (getRemainingBalance(tx, ha) <= 0) return false;   // udah lunas → bukan JT
-    var due = notaDueDate(tx);                            // tgl nota + tempo
-    if (!due) return false;                               // tunai / tanpa tempo → skip
+    if (getRemainingBalance(tx, ha) <= 0) return false;
+    var due = notaDueDate(tx); if (!due) return false;
     var now = new Date(); now.setHours(0, 0, 0, 0);
-    return calDaysDiff(due, now) <= 0;                    // lewat(−) atau pas hari H(0)
+    return calDaysDiff(due, now) <= 0;
   }
 
-  function applyFix() {
-    if (typeof window.notaDueDate !== 'function') return;
+  function install() {
+    if (typeof window.loadHistory !== 'function' || typeof window.renderHistoryDetail !== 'function') { setTimeout(install, 120); return; }
+    if (window.__v49) return;
+    window.__v49 = true;
 
-    /* badge hitungan di tombol = cuma yang beneran lewat */
+    /* ---- hitungan badge tombol JT ---- */
     window.jtCount = function(loc) {
-      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
-      var c = 0;
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || []; var c = 0;
       ha.forEach(function(tx) {
         if (!duePassed(tx, ha)) return;
         if (loc === 'bdg' && !txIsDalamKota(tx)) return;
@@ -8085,25 +8100,23 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
       return c;
     };
 
+    /* ---- loadHistory: JT ketat + H-x + label LK ---- */
     function remainingFast(tx, returMap) {
       if (isLK(tx)) return 0;
       var base = (tx.finalGrandTotal !== undefined ? tx.finalGrandTotal : tx.grandTotal) || 0;
       return Math.max(0, base - (tx.payDiscount || 0) - (tx.paidAmount || 0) - (returMap[tx.invNo] || 0));
     }
-
     window.loadHistory = function() {
       var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
       var q = (document.getElementById('searchHistory').value || '').toLowerCase();
       var returMap = {};
       for (var i = 0; i < ha.length; i++) { var hh = ha[i]; if ((hh.isRetur || hh.isPi) && hh.originalInvNo && !hh.isCancelled) returMap[hh.originalInvNo] = (returMap[hh.originalInvNo] || 0) + (hh.finalGrandTotal || hh.grandTotal || 0); }
-
-      var filteredIdx = [];
+      var fIdx = [];
       for (var j = 0; j < ha.length; j++) {
         var tx = ha[j];
         var s = ((tx.cust ? tx.cust.name : '') + ' ' + (tx.cust ? tx.cust.code : '') + ' ' + tx.invNo).toLowerCase();
         if (s.indexOf(q) < 0) continue;
         var isImp = isImportedTx(tx), ok = true;
-
         if (invoiceTypeFilter === 'reguler') { if (isImp || tx.isRetur || tx.isPi || tx.isOrder) ok = false; }
         else if (invoiceTypeFilter === 'bdg') { if (tx.isRetur || tx.isPi || tx.isOrder || !txIsDalamKota(tx)) ok = false; }
         else if (invoiceTypeFilter === 'jkt') { if (tx.isRetur || tx.isPi || tx.isOrder || !txIsLuarKota(tx)) ok = false; }
@@ -8112,41 +8125,34 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
         else if (invoiceTypeFilter === 'order' && !tx.isOrder) ok = false;
         else if (invoiceTypeFilter === 'lkotm' && tx.region !== 'LKOTM') ok = false;
         else if (invoiceTypeFilter === 'lkprt' && tx.region !== 'LKPRT') ok = false;
-        else if (invoiceTypeFilter === 'jatuhTempo') ok = duePassed(tx, ha);          /* ← ATURAN BARU */
+        else if (invoiceTypeFilter === 'jatuhTempo') ok = duePassed(tx, ha);
         else if (invoiceTypeFilter === 'jtBdg') ok = duePassed(tx, ha) && txIsDalamKota(tx);
         else if (invoiceTypeFilter === 'jtJkt') ok = duePassed(tx, ha) && txIsLuarKota(tx);
-
-        if (ok) filteredIdx.push(j);
+        if (ok) fIdx.push(j);
       }
-
-      filteredIdx.sort(function(a, b) { return new Date(ha[b].date) - new Date(ha[a].date); });
-      filteredHistoryGIs = filteredIdx;
-
+      fIdx.sort(function(a, b) { return new Date(ha[b].date) - new Date(ha[a].date); });
+      filteredHistoryGIs = fIdx;
       var container = document.getElementById('historyList'), infoEl = document.getElementById('historyInfo');
-      if (!filteredIdx.length) {
-        container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-light)"><svg class="ei lg"><use href="#icon-file"/></svg> Tidak ada nota jatuh tempo 🎉</div>';
+      if (!fIdx.length) {
+        container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-light)"><svg class="ei lg"><use href="#icon-file"/></svg> Tidak ada data</div>';
         infoEl.textContent = '0 data';
-        document.getElementById('histPrevBtn').disabled = true;
-        document.getElementById('histNextBtn').disabled = true;
+        document.getElementById('histPrevBtn').disabled = true; document.getElementById('histNextBtn').disabled = true;
         return;
       }
-      var tp = Math.ceil(filteredIdx.length / HISTORY_PER_PAGE);
+      var tp = Math.ceil(fIdx.length / HISTORY_PER_PAGE);
       if (state.history.page > tp) state.history.page = tp;
       if (state.history.page < 1) state.history.page = 1;
-      var pd = filteredIdx.slice((state.history.page - 1) * HISTORY_PER_PAGE, state.history.page * HISTORY_PER_PAGE);
-
+      var pd = fIdx.slice((state.history.page - 1) * HISTORY_PER_PAGE, state.history.page * HISTORY_PER_PAGE);
       var html = '', ld = '', now = new Date(); now.setHours(0, 0, 0, 0);
       for (var k = 0; k < pd.length; k++) {
         var gi = pd[k], tx2 = ha[gi], td = new Date(tx2.date);
         var ds = td.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         if (ds !== ld) { html += '<div class="date-group"><svg class="ei"><use href="#icon-calendar"/></svg> ' + ds + '</div>'; ld = ds; }
-
         var badge = '', isImp2 = isImportedTx(tx2);
-        var isRegNota = !tx2.isCancelled && !tx2.isRetur && !tx2.isPi && !tx2.isOrder;
-        var rem = isRegNota ? remainingFast(tx2, returMap) : -1;
+        var isReg = !tx2.isCancelled && !tx2.isRetur && !tx2.isPi && !tx2.isOrder;
+        var rem = isReg ? remainingFast(tx2, returMap) : -1;
         var ta = tx2.finalGrandTotal !== undefined ? tx2.finalGrandTotal : tx2.grandTotal;
-        var returCut = isRegNota ? (returMap[tx2.invNo] || 0) : 0;
-
+        var rCut = isReg ? (returMap[tx2.invNo] || 0) : 0;
         if (tx2.isCancelled) badge = '<span class="tx-badge tx-badge-cancel">BATAL</span>';
         else if (tx2.isRetur) badge = '<span class="tx-badge tx-badge-retur">RETUR</span>';
         else if (tx2.isPi) badge = '<span class="tx-badge tx-badge-pi">PI</span>';
@@ -8155,41 +8161,36 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
         else if (tx2.region === 'LKPRT') badge = '<span class="tx-badge" style="background:#dcfce7;color:#166534">LK PRT</span>';
         else if (isImp2) badge = tx2.region === 'BDG' ? '<span class="tx-badge tx-badge-bdg">BDG</span>' : '<span class="tx-badge tx-badge-jkt">JKT</span>';
         else badge = rem <= 0 ? '<span class="tx-badge tx-badge-lunas">LUNAS</span>' : tx2.isCash ? '<span class="tx-badge tx-badge-cash">CASH</span>' : '<span class="tx-badge tx-badge-reg">REG</span>';
-
-        if (isRegNota && returCut > 0) badge += '<span class="tx-badge tx-badge-retur"> ' + fmtCurrency(returCut) + '</span>';
-        if (isRegNota && getOngkir(tx2) > 0) badge += '<span class="tx-badge tx-badge-ongkir"> ' + fmtCurrency(getOngkir(tx2)) + '</span>';
-
-        /* badge: cuma TELAT / JATUH TEMPO (H-x ga mungkin lolos filter) */
-        if (isRegNota && rem > 0) {
+        if (isReg && rCut > 0) badge += '<span class="tx-badge tx-badge-retur"> ' + fmtCurrency(rCut) + '</span>';
+        if (isReg && getOngkir(tx2) > 0) badge += '<span class="tx-badge tx-badge-ongkir"> ' + fmtCurrency(getOngkir(tx2)) + '</span>';
+        /* badge JT: TELAT / JATUH TEMPO / H-x */
+        if (isReg && rem > 0) {
           var _due = notaDueDate(tx2);
           if (_due) {
             var _diff = calDaysDiff(_due, now);
             if (_diff < 0) badge += '<span class="tx-badge tx-badge-overdue">TELAT ' + (-_diff) + 'h</span>';
-            else badge += '<span class="tx-badge tx-badge-jkt">JATUH TEMPO</span>';
+            else if (_diff === 0) badge += '<span class="tx-badge tx-badge-jkt">JATUH TEMPO</span>';
+            else badge += '<span class="tx-badge tx-badge-jkt">H-' + _diff + '</span>';
           }
         }
-
-        var amountHtml = '';
-        if (!isRegNota) amountHtml = '<div class="tx-amount" style="color:' + (tx2.isCancelled ? 'var(--text-light)' : tx2.isRetur ? 'var(--retur)' : tx2.isPi ? 'var(--pi)' : 'var(--success)') + '">' + (tx2.isRetur || tx2.isPi ? '- ' : '') + fmtCurrency(ta) + '</div>';
-        else if (rem > 0 && rem < ta) amountHtml = '<div style="text-align:right;line-height:1.15"><div style="font-size:7px;font-weight:800;color:var(--warning);text-transform:uppercase">Sisa Nota</div><div class="tx-amount" style="color:var(--warning)">' + fmtCurrency(rem) + '</div><div style="font-size:8.5px;color:var(--text-light);font-family:var(--font-mono)">' + fmtCurrency(ta) + '</div></div>';
-        else if (rem <= 0) amountHtml = '<div style="text-align:right;line-height:1.15"><div style="font-size:7px;font-weight:800;color:var(--success);text-transform:uppercase">Lunas</div><div class="tx-amount" style="color:var(--success)">' + fmtCurrency(ta) + '</div></div>';
-        else amountHtml = '<div style="text-align:right;line-height:1.15"><div class="tx-amount">' + fmtCurrency(ta) + '</div><div style="font-size:7px;font-weight:700;color:var(--warning);text-transform:uppercase">Belum Bayar</div></div>';
-
+        var ah = '';
+        if (!isReg) ah = '<div class="tx-amount" style="color:' + (tx2.isCancelled ? 'var(--text-light)' : tx2.isRetur ? 'var(--retur)' : tx2.isPi ? 'var(--pi)' : 'var(--success)') + '">' + (tx2.isRetur || tx2.isPi ? '- ' : '') + fmtCurrency(ta) + '</div>';
+        else if (rem > 0 && rem < ta) ah = '<div style="text-align:right;line-height:1.15"><div style="font-size:7px;font-weight:800;color:var(--warning);text-transform:uppercase">Sisa Nota</div><div class="tx-amount" style="color:var(--warning)">' + fmtCurrency(rem) + '</div><div style="font-size:8.5px;color:var(--text-light);font-family:var(--font-mono)">' + fmtCurrency(ta) + '</div></div>';
+        else if (rem <= 0) ah = '<div style="text-align:right;line-height:1.15"><div style="font-size:7px;font-weight:800;color:var(--success);text-transform:uppercase">Lunas</div><div class="tx-amount" style="color:var(--success)">' + fmtCurrency(ta) + '</div></div>';
+        else ah = '<div style="text-align:right;line-height:1.15"><div class="tx-amount">' + fmtCurrency(ta) + '</div><div style="font-size:7px;font-weight:700;color:var(--warning);text-transform:uppercase">Belum Bayar</div></div>';
         var desc = (tx2.rows || []).filter(function(r) { return r.desc; }).map(function(r) { return escapeHtml(r.desc) + (r.qty ? (' ×' + r.qty) : ''); }).join(', ');
         var sel = selectedHistIds.has(gi);
-
         html += '<div class="tx-card' + (sel ? ' bulk-selected' : '') + '" onclick="handleHistoryCardClick(' + gi + ')">' +
           (multiPayMode ? '<div class="tx-chk">' + (sel ? '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>' : '') + '</div>' : '') +
-          '<div class="tx-card-main"><div class="tx-card-top"><div style="min-width:0;flex:1"><div class="tx-name">' + escapeHtml(tx2.cust ? tx2.cust.name : 'Unknown') + ' ' + badge + '</div><div class="tx-inv">' + escapeHtml(tx2.invNo) + ' • ' + td.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + '</div></div>' + amountHtml + '</div>' +
+          '<div class="tx-card-main"><div class="tx-card-top"><div style="min-width:0;flex:1"><div class="tx-name">' + escapeHtml(tx2.cust ? tx2.cust.name : 'Unknown') + ' ' + badge + '</div><div class="tx-inv">' + escapeHtml(tx2.invNo) + ' • ' + td.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + '</div></div>' + ah + '</div>' +
           (desc ? '<div class="tx-desc">' + desc + '</div>' : '') + '</div></div>';
       }
-
       container.innerHTML = html;
-      infoEl.textContent = filteredIdx.length + ' data (Hal ' + state.history.page + '/' + tp + ')';
+      infoEl.textContent = fIdx.length + ' data (Hal ' + state.history.page + '/' + tp + ')';
       document.getElementById('histPrevBtn').disabled = state.history.page <= 1;
       document.getElementById('histNextBtn').disabled = state.history.page >= tp;
       playListAnim(container);
-
+      /* label bawaan LK */
       setTimeout(function() {
         document.querySelectorAll('.tx-card').forEach(function(card) {
           var m = (card.getAttribute('onclick') || '').match(/\d+/); if (!m) return;
@@ -8204,17 +8205,104 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
         });
       }, 0);
     };
+
+    /* ---- rincian: tanggal di KANAN ---- */
+    var oD = window.renderHistoryDetail;
+    window.renderHistoryDetail = function(gi) {
+      var r = oD.apply(this, arguments);
+      setTimeout(function() {
+        var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+        var tx = ha[gi]; if (!tx) return;
+        /* buang baris kiri sisa patch lama */
+        Array.prototype.forEach.call(document.querySelectorAll('.ro-custinfo .jt-row'), function(el) { el.remove(); });
+        var right = document.querySelector('.ro-meta-right');
+        if (!right || right.querySelector('.jt-right')) return;
+        var tempo = tempoForTx(tx), due = notaDueDate(tx);
+        var now = new Date(); now.setHours(0, 0, 0, 0);
+        var h = '<div class="jt-right" style="margin-top:6px;text-align:right;font-size:9px;line-height:1.7">';
+        h += '<div style="color:var(--text-light)">Tgl Nota: <b style="color:var(--text)">' + fD2(tx.date) + '</b></div>';
+        h += '<div style="color:var(--text-light)">Tempo: <b style="color:var(--text)">' + (tempo > 0 ? tempo + ' Hari' : 'Tunai') + '</b></div>';
+        if (due) {
+          var diff = calDaysDiff(due, now);
+          var rem = getRemainingBalance(tx, ha);
+          var warn = rem > 0 && diff <= 0;
+          var ket = diff < 0 ? ' (TELAT ' + (-diff) + 'h)' : diff === 0 ? ' (HARI INI)' : ' (H-' + diff + ')';
+          h += '<div style="color:' + (warn ? 'var(--danger)' : 'var(--text-light)') + ';font-weight:' + (warn ? '800' : '400') + '">Jatuh Tempo: <b style="color:' + (warn ? 'var(--danger)' : 'var(--text)') + '">' + fD2(due) + '</b>' + ket + '</div>';
+        }
+        h += '</div>';
+        right.insertAdjacentHTML('beforeend', h);
+      }, 0);
+      return r;
+    };
+
+    /* pasang ulang saat load selesai = pasti menang */
+    window.addEventListener('load', function() { /* noop: flag udah di-set, fungsi udah aktif */ });
+    try { console.log('[v49 FINAL] aktif'); } catch (e) {}
   }
 
-  function boot() {
-    if (window.__v46) return;
-    window.__v46 = true;
-    applyFix();                          // pasang saat init
-    window.addEventListener('load', applyFix);  // pasang ulang saat load = pasti menang
-    try { console.log('[v46] fix JT aktif'); } catch (e) {}
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+/* ==========================================================
+   PATCH v50: HEADER RINCIAN RAPI
+   - Badge tanggal asli dihapus (ga dobel sama Tgl Nota)
+   - Blok kanan: Tgl Nota • Tempo • Jatuh Tempo (masing-masing 1x)
+   ========================================================== */
+(function() {
+  function fD2(d) { return new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
+
+  function install() {
+    if (typeof window.renderHistoryDetail !== 'function' || typeof window.notaDueDate !== 'function') {
+      setTimeout(install, 120);
+      return;
+    }
+    if (window.__v50) return;
+    window.__v50 = true;
+
+    var oD = window.renderHistoryDetail;
+    window.renderHistoryDetail = function(gi) {
+      var r = oD.apply(this, arguments);
+      setTimeout(function() {
+        var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+        var tx = ha[gi];
+        if (!tx) return;
+        var right = document.querySelector('.ro-meta-right');
+        if (!right) return;
+
+        /* 1) hapus badge kalender asli (dobel) */
+        var badge = right.querySelector('.ro-date-badge');
+        if (badge) badge.remove();
+
+        /* 2) buang baris kiri sisa patch lama */
+        Array.prototype.forEach.call(document.querySelectorAll('.ro-custinfo .jt-row'), function(el) { el.remove(); });
+
+        /* 3) bersihkan blok jt-right duplikat */
+        Array.prototype.forEach.call(right.querySelectorAll('.jt-right'), function(el) { el.remove(); });
+
+        /* 4) bangun blok kanan rapi (sekali aja) */
+        var tempo = tempoForTx(tx), due = notaDueDate(tx);
+        var now = new Date(); now.setHours(0, 0, 0, 0);
+        var h = '<div class="jt-right" style="margin-top:6px;text-align:right;font-size:9px;line-height:1.7">';
+        h += '<div style="color:var(--text-light)">Tgl Nota: <b style="color:var(--text)">' + fD2(tx.date) + '</b></div>';
+        h += '<div style="color:var(--text-light)">Tempo: <b style="color:var(--text)">' + (tempo > 0 ? tempo + ' Hari' : 'Tunai') + '</b></div>';
+        if (due) {
+          var diff = calDaysDiff(due, now);
+          var rem = getRemainingBalance(tx, ha);
+          var warn = rem > 0 && diff <= 0;
+          var ket = diff < 0 ? ' (TELAT ' + (-diff) + 'h)' : diff === 0 ? ' (HARI INI)' : ' (H-' + diff + ')';
+          h += '<div style="color:' + (warn ? 'var(--danger)' : 'var(--text-light)') + '">Jatuh Tempo: <b style="color:' + (warn ? 'var(--danger)' : 'var(--text)') + '">' + fD2(due) + '</b>' + ket + '</div>';
+        }
+        h += '</div>';
+        right.insertAdjacentHTML('beforeend', h);
+      }, 15);
+      return r;
+    };
+
+    try { console.log('[v50] header rincian rapi'); } catch (e) {}
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
 })();
 </script>
 </body>
