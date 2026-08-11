@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v4.7</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v4.8</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='4.7';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='4.8';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -2636,7 +2636,7 @@ document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){if
       };
     }
   })(WRAP[w])}
-  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v4.7'}catch(e){}
+  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v4.8'}catch(e){}
   try{var sl=document.querySelector('.sp-load');if(sl)sl.textContent='Memuat sistem\u2026'}catch(e){}
   try{repairAll(document.body)}catch(e){}
   setTimeout(function(){try{repairAll(document.body)}catch(e){}},200);
@@ -7865,6 +7865,168 @@ body:has(#cvMergeView[style*="flex"]) .bottom-nav{transform:translateY(112%);opa
     };
 
     try { console.log('[v41b] aktif: edit baris bermasalah'); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+</script>
+<style id="v42-css">
+  /* kolom QTY detail faktur: kecil aja (2 digit) */
+  #invoiceDetailContent .ro-table th:nth-child(1),
+  #invoiceDetailContent .ro-table td:nth-child(1) {
+    width: 34px;
+    min-width: 34px;
+  }
+</style>
+
+<script>
+/* ==========================================================
+   PATCH v42:
+   1) Kolom QTY detail faktur kecil (2 digit)
+   2) Opsi share "💰 Share +Modal" → kolom H. MODAL
+      (harga satuan setelah diskon kategori)
+   ========================================================== */
+(function() {
+  function isPMName(s) { return /\(PM\)\s*$/i.test(String(s == null ? '' : s).trim()); }
+
+  /* ---- tambah kolom H. MODAL ke tabel faktur (image share) ---- */
+  function addModalColumn(node, tx) {
+    var cust = tx && tx.cust ? tx.cust : null;
+    var tables = node.querySelectorAll('table');
+    Array.prototype.forEach.call(tables, function(tb) {
+      var head = tb.querySelector('thead tr');
+      if (!head || head.children.length < 3) return;
+
+      var thM = document.createElement('th');
+      thM.textContent = 'H. MODAL';
+      thM.style.cssText = 'text-align:right;padding:6px 6px;font-size:8.5px;letter-spacing:.3px;border-right:1px solid rgba(255,255,255,.1);width:1%;white-space:nowrap';
+      head.insertBefore(thM, head.children[head.children.length - 1]);
+
+      Array.prototype.forEach.call(tb.querySelectorAll('tbody tr'), function(tr) {
+        // baris pengisi kosong (colspan) → lebarkan
+        if (tr.children.length === 1) {
+          var td0 = tr.children[0];
+          var cs = parseInt(td0.getAttribute('colspan') || '1', 10);
+          td0.setAttribute('colspan', String(cs + 1));
+          return;
+        }
+        var cells = tr.children;
+        var code = (cells[1] && cells[1].textContent || '').trim();
+        var priceCell = cells[cells.length - 2];
+        var price = parseMoney(priceCell ? priceCell.textContent : '');
+
+        var im = findItemByCode(code);
+        if (!im && cells.length >= 5) im = findItemByDesc(cells[2].textContent || '');
+        var cat = im ? im.cat : '';
+        var d = 0;
+        if (im && !isPMName(im.name) && cat && cust && cust.disc && cust.disc[cat] > 0) d = cust.disc[cat];
+        var net = price * (1 - d / 100);
+
+        var tdM = document.createElement('td');
+        tdM.style.cssText = 'text-align:right;padding:5px 6px;border-top:1px solid #e2e8f0;font-family:\'JetBrains Mono\',monospace;font-size:10px;white-space:nowrap;width:1%;' + (d > 0 ? 'color:#059669;font-weight:700' : '');
+        tdM.textContent = fmtCurrencyFull(net);
+        tr.insertBefore(tdM, cells[cells.length - 1]);
+      });
+    });
+  }
+
+  function install() {
+    if (typeof window.buildInvoiceDOM !== 'function' ||
+        typeof window.shareHistoryInvoice !== 'function') {
+      setTimeout(install, 150);
+      return;
+    }
+    if (window.__v42) return;
+    window.__v42 = true;
+    window.__shareWithModal = false;
+
+    /* ---- buildInvoiceDOM: sisip kolom kalau flag aktif ---- */
+    var oBuild = window.buildInvoiceDOM;
+    window.buildInvoiceDOM = function(tx) {
+      var node = oBuild.apply(this, arguments);
+      if (window.__shareWithModal) {
+        try { addModalColumn(node, tx); } catch (e) {}
+      }
+      return node;
+    };
+
+    /* ---- share history: + opsi Modal ---- */
+    window.shareHistoryInvoice = function(gi) {
+      try {
+        var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+        var tx = ha[gi];
+        if (!tx) { alertWarning('Data tidak ditemukan'); return; }
+        if (tx.isOrder) {
+          var grand = (tx.finalGrandTotal != null) ? tx.finalGrandTotal : (tx.grandTotal || 0);
+          var rowsO = (tx.rows || []).map(function(r) { return { code: r.code, desc: r.desc, qty: r.qty }; });
+          window.open('https://wa.me/?text=' + encodeURIComponent(buildOrderShareText(tx.cust, rowsO, grand)), '_blank');
+          return;
+        }
+        enqueuePopup({
+          type: 'question',
+          title: 'Share Faktur',
+          message: '<b>' + escapeHtml(tx.invNo) + '</b><br>' + escapeHtml(tx.cust ? tx.cust.name : '-'),
+          buttons: [
+            { text: '👁 Preview', cls: 'secondary', action: 'preview' },
+            { text: '📤 Share ke WA', cls: 'primary', action: 'share' },
+            { text: '💰 Share +Modal', cls: 'secondary', action: 'sharemodal' }
+          ],
+          callback: function(a) {
+            if (a === 'preview') {
+              previewInvoice(tx);
+            } else if (a === 'share') {
+              previewInvoice(tx);
+              setTimeout(function() {
+                var inv = document.getElementById('invoiceShareStage').firstElementChild;
+                if (inv) __bioliShareInvoice(inv, tx.invNo, null, '');
+              }, 400);
+            } else if (a === 'sharemodal') {
+              window.__shareWithModal = true;
+              previewInvoice(tx);
+              setTimeout(function() {
+                var inv = document.getElementById('invoiceShareStage').firstElementChild;
+                if (inv) __bioliShareInvoice(inv, tx.invNo, null, '');
+                setTimeout(function() { window.__shareWithModal = false; }, 1500);
+              }, 400);
+            }
+          }
+        });
+      } catch (e) {
+        alertDanger('Gagal: ' + escapeHtml(e && e.message ? e.message : String(e)));
+      }
+    };
+
+    /* ---- share draft (tombol KIRIM WA): + opsi Modal ---- */
+    window.sendDraftInvoiceToWA = function(ev) {
+      if (currentMode === 'order') { shareOrderToWA(); return; }
+      if (!currentCustomer) { alertWarning('Pilih customer dulu!'); return; }
+      var rows = collectValidRows();
+      if (!rows.length) { alertWarning('Isi barang dulu!'); return; }
+      enqueuePopup({
+        type: 'question',
+        title: 'Kirim Faktur',
+        message: 'Pilih aksi untuk <b>' + escapeHtml(currentCustomer.name) + '</b>:',
+        buttons: [
+          { text: '👁 Preview Faktur', cls: 'secondary', action: 'preview' },
+          { text: '📤 Share ke WhatsApp', cls: 'primary', action: 'share' },
+          { text: '💰 Share +Modal', cls: 'secondary', action: 'sharemodal' }
+        ],
+        callback: function(a) {
+          if (a === 'preview') {
+            try { previewInvoice(buildCurrentDraft()); } catch (e) { alertDanger('Gagal membuat preview: ' + escapeHtml(e && e.message ? e.message : String(e))); }
+          } else if (a === 'share') {
+            doSendDraftToWA(ev);
+          } else if (a === 'sharemodal') {
+            window.__shareWithModal = true;
+            doSendDraftToWA(ev);
+            setTimeout(function() { window.__shareWithModal = false; }, 2000);
+          }
+        }
+      });
+    };
+
+    try { console.log('[v42] aktif: qty slim + share modal'); } catch (e) {}
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
