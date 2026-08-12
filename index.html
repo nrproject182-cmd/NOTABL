@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v5.1</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v5.2</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='5.1';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='5.2';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -2636,7 +2636,7 @@ document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){if
       };
     }
   })(WRAP[w])}
-  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v5.1'}catch(e){}
+  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v5.2'}catch(e){}
   try{var sl=document.querySelector('.sp-load');if(sl)sl.textContent='Memuat sistem\u2026'}catch(e){}
   try{repairAll(document.body)}catch(e){}
   setTimeout(function(){try{repairAll(document.body)}catch(e){}},200);
@@ -8395,6 +8395,307 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
       function() { updatePaySummaryLive(currentPayGrand); });
 
     try { console.log('[v51] fix titip + auto cash-transfer aktif'); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v52: BATAL PEMBAYARAN FAKTUR
+   - List semua pembayaran di rincian nota
+   - Tiap pembayaran ada tombol ✕ Batal
+   - paidAmount, sisa, laporan LK & pelunasan auto-sync
+   ========================================================== */
+(function() {
+  function fD2(d) { return new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  function isLKTx(tx) { return tx && (tx.region === 'LKOTM' || tx.region === 'LKPRT'); }
+
+  function moneyRow(p, i, gi) {
+    var parts = [];
+    if (p.cash > 0) parts.push('Cash ' + fmtCurrency(p.cash));
+    if (p.transfer > 0) parts.push('Trf ' + fmtCurrency(p.transfer));
+    var meth = parts.length ? parts.join(' + ') : '—';
+    return '<div class="ro-srow" style="align-items:center">' +
+      '<span class="ro-srow-label" style="white-space:normal">' +
+      '<span style="font-weight:700">' + (i + 1) + ') ' + meth + (p.cmm > 0 ? ' • CMM ' + fmtCurrency(p.cmm) : '') + '</span>' +
+      '<small style="color:var(--text-light);font-size:8px;display:block">' + fD2(p.date) + (p.note ? ' • ' + escapeHtml(p.note) : '') + '</small>' +
+      '</span>' +
+      '<span class="ro-srow-value" style="display:flex;align-items:center;gap:6px">' + fmtCurrency(p.amount) +
+      '<button type="button" data-cancelpay="' + gi + ':' + i + '" class="inv-act-btn cancel" style="height:22px;font-size:8px;padding:0 7px">✕ Batal</button>' +
+      '</span></div>';
+  }
+
+  function injectPayList(gi) {
+    var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+    var tx = ha[gi];
+    if (!tx) return;
+    var grp = document.querySelector('.ro-sum-pay');
+    if (!grp) return;
+    var old = grp.querySelector('.pay-list');
+    if (old) old.remove();
+    if (!(tx.payments && tx.payments.length)) return;
+    var html = '<div class="pay-list" style="margin:6px 0;border-top:1px dashed var(--border);padding-top:6px">' +
+      '<div style="font-size:8px;font-weight:800;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Riwayat Pembayaran</div>' +
+      tx.payments.map(function(p, i) { return moneyRow(p, i, gi); }).join('') + '</div>';
+    var status = grp.querySelector('.ro-status-line');
+    if (status) status.insertAdjacentHTML('beforebegin', html);
+    else grp.insertAdjacentHTML('beforeend', html);
+  }
+
+  window.cancelPayment = function(gi, pIdx) {
+    var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+    var tx = ha[gi];
+    if (!tx || !tx.payments || !tx.payments[pIdx]) return;
+    var p = tx.payments[pIdx];
+    showDangerConfirm(
+      'Batalkan pembayaran <b>' + fmtCurrency(p.amount) + '</b> (' + fD2(p.date) + ')?<br><small>Sisa tagihan bertambah kembali.</small>',
+      function(cf) {
+        if (!cf) return;
+        tx.payments.splice(pIdx, 1);
+        var s = 0;
+        tx.payments.forEach(function(x) { s += x.amount || 0; });
+        tx.paidAmount = s;
+        if (p.cmm > 0) tx.payDiscount = Math.max(0, (tx.payDiscount || 0) - p.cmm);
+        var c = 0, t = 0;
+        tx.payments.forEach(function(x) { if (x.cash > 0) c++; if (x.transfer > 0) t++; });
+        tx.isCash = c > 0;
+        tx.isTransfer = t > 0;
+        ha[gi] = tx;
+        try { localStorage.setItem('txHistory', JSON.stringify(ha)); } catch (e) { alertDanger('Storage penuh!'); }
+        var rem = (isLKTx(tx) && typeof window.lkPayableRemaining === 'function') ? window.lkPayableRemaining(tx, ha) : getRemainingBalance(tx, ha);
+        alertSuccess('Pembayaran dibatalkan.<br>Sisa: <b>' + fmtCurrency(rem) + '</b>');
+        loadHistory();
+        if (document.getElementById('historyDetailView').style.display === 'block' && currentDetailIdx === gi) renderHistoryDetail(gi);
+      }
+    );
+  };
+
+  function install() {
+    if (typeof window.renderHistoryDetail !== 'function') { setTimeout(install, 120); return; }
+    if (window.__v52) return;
+    window.__v52 = true;
+
+    var oD = window.renderHistoryDetail;
+    window.renderHistoryDetail = function(gi) {
+      var r = oD.apply(this, arguments);
+      setTimeout(function() { injectPayList(gi); }, 20);
+      return r;
+    };
+
+    /* delegation: klik tombol batal di mana pun */
+    document.addEventListener('click', function(e) {
+      var b = e.target.closest ? e.target.closest('[data-cancelpay]') : null;
+      if (!b) return;
+      var parts = (b.getAttribute('data-cancelpay') || '').split(':');
+      window.cancelPayment(parseInt(parts[0], 10), parseInt(parts[1], 10));
+    }, true);
+
+    try { console.log('[v52] batal pembayaran aktif'); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v53 (REVISI v52):
+   1) Tombol Batal pembayaran → samping tombol Edit
+   2) Multi-select: nota lunas → tombol jadi "Batal Bayar"
+   ========================================================== */
+(function() {
+  function fD2(d) { return new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  function remForTx(tx, ha) {
+    if ((tx.region === 'LKOTM' || tx.region === 'LKPRT') && typeof window.lkPayableRemaining === 'function') return window.lkPayableRemaining(tx, ha);
+    return getRemainingBalance(tx, ha);
+  }
+
+  function install() {
+    if (typeof window.renderHistoryDetail !== 'function' || typeof window.updateMultiSelectInfo !== 'function') {
+      setTimeout(install, 120);
+      return;
+    }
+    if (window.__v53) return;
+    window.__v53 = true;
+
+    /* ---------- batal semua pembayaran satu nota ---------- */
+    window.cancelAllPayments = function(gi) {
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+      var tx = ha[gi];
+      if (!tx || !(tx.payments || []).length) return;
+      tx.payments = [];
+      tx.paidAmount = 0;
+      tx.payDiscount = 0;
+      tx.isCash = false;
+      tx.isTransfer = false;
+      ha[gi] = tx;
+      try { localStorage.setItem('txHistory', JSON.stringify(ha)); } catch (e) { alertDanger('Storage penuh!'); }
+      var rem = remForTx(tx, ha);
+      alertSuccess('Semua pembayaran dibatalkan.<br>Sisa: <b>' + fmtCurrency(rem) + '</b>');
+      loadHistory();
+      if (document.getElementById('historyDetailView').style.display === 'block' && currentDetailIdx === gi) renderHistoryDetail(gi);
+    };
+
+    /* ---------- popup pilih pembayaran yg dibatalin ---------- */
+    function openPayCancelList(gi) {
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+      var tx = ha[gi];
+      if (!tx || !(tx.payments || []).length) return alertWarning('Tidak ada pembayaran.');
+      var btns = tx.payments.map(function(p, i) {
+        var parts = [];
+        if (p.cash > 0) parts.push('Cash ' + fmtCurrency(p.cash));
+        if (p.transfer > 0) parts.push('Trf ' + fmtCurrency(p.transfer));
+        return { text: (i + 1) + ') ' + (parts.join(' + ') || fmtCurrency(p.amount)) + ' • ' + fD2(p.date), cls: 'danger', action: 'c' + i };
+      });
+      if (tx.payments.length > 1) btns.push({ text: 'BATALKAN SEMUA', cls: 'danger', action: 'all' });
+      btns.push({ text: 'Tutup', cls: 'secondary', action: 'ok' });
+      enqueuePopup({
+        type: 'question',
+        title: 'Batal Pembayaran • ' + escapeHtml(tx.invNo),
+        message: 'Pilih pembayaran yang mau dibatalkan:',
+        buttons: btns,
+        callback: function(a) {
+          if (!a || a === 'ok') return;
+          if (a === 'all') window.cancelAllPayments(gi);
+          else window.cancelPayment(gi, parseInt(a.slice(1), 10));
+        }
+      });
+    }
+
+    /* ---------- rincian: batal pindah ke samping Edit ---------- */
+    var oD = window.renderHistoryDetail;
+    window.renderHistoryDetail = function(gi) {
+      var r = oD.apply(this, arguments);
+      setTimeout(function() {
+        var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+        var tx = ha[gi];
+        if (!tx) return;
+        /* buang tombol batal per-baris (v52) */
+        Array.prototype.forEach.call(document.querySelectorAll('[data-cancelpay]'), function(b) { b.remove(); });
+        /* tambah tombol batal di samping Edit */
+        var head = document.querySelector('.ro-sum-pay .ro-sum-head');
+        if (head && tx.payments && tx.payments.length && !document.getElementById('btnCancelPay')) {
+          var b = document.createElement('button');
+          b.id = 'btnCancelPay';
+          b.className = 'inv-act-btn cancel';
+          b.style.cssText = 'margin-left:6px;height:24px;font-size:8px';
+          b.innerHTML = '<svg><use href="#icon-x"/></svg> Batal';
+          b.onclick = function() { openPayCancelList(gi); };
+          head.appendChild(b);
+        }
+      }, 30);
+      return r;
+    };
+
+    /* ---------- multi-select: Bayar ↔ Batal Bayar ---------- */
+    window.updateMultiSelectInfo = function() {
+      var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+      var nota = 0, notaPay = 0, paidTotal = 0, paidCount = 0;
+      selectedHistIds.forEach(function(gi) {
+        var tx = ha[gi];
+        if (!tx || tx.isCancelled || tx.isRetur || tx.isPi || tx.isOrder) return;
+        var rem = remForTx(tx, ha);
+        nota += rem;
+        if (rem > 0) notaPay++;
+        if (rem <= 0 && (tx.paidAmount || 0) > 0) { paidCount++; paidTotal += tx.paidAmount; }
+      });
+      document.getElementById('msCount').textContent = selectedHistIds.size + ' terpilih';
+      var lbl = document.querySelector('#multiSelectInfo .ms-lbl');
+      var notaEl = document.getElementById('msNota');
+      var btn = document.getElementById('msPayBtn');
+      var icoBayar = '<svg style="width:12px;height:12px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-1px"><use href="#icon-wallet"/></svg> ';
+      var icoBatal = '<svg style="width:12px;height:12px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-1px"><use href="#icon-x"/></svg> ';
+
+      if (notaPay > 0) {
+        /* ada sisa tagihan → mode BAYAR */
+        if (lbl) lbl.textContent = 'Sisa Nota (tagihan)';
+        notaEl.textContent = fmtCurrency(nota);
+        btn.style.background = '#10b981';
+        btn.innerHTML = icoBayar + 'Bayar';
+        btn.onclick = openMultiPayPopup;
+        btn.disabled = false;
+      } else if (paidCount > 0) {
+        /* semua terpilih lunas → mode BATAL BAYAR */
+        if (lbl) lbl.textContent = 'Total Terbayar';
+        notaEl.textContent = fmtCurrency(paidTotal);
+        btn.style.background = '#dc2626';
+        btn.innerHTML = icoBatal + 'Batal Bayar';
+        btn.onclick = function() {
+          var targets = [];
+          selectedHistIds.forEach(function(gi) {
+            var tx = ha[gi];
+            if (tx && !tx.isCancelled && !tx.isRetur && !tx.isPi && !tx.isOrder && (tx.paidAmount || 0) > 0 && remForTx(tx, ha) <= 0) targets.push(gi);
+          });
+          if (!targets.length) return alertWarning('Tidak ada nota lunas terpilih!');
+          showDangerConfirm('Batalkan pembayaran <b>' + targets.length + ' nota</b> (' + fmtCurrency(paidTotal) + ')?<br><small>Sisa tagihan kembali muncul.</small>', function(cf) {
+            if (!cf) return;
+            targets.forEach(function(gi) {
+              var tx = ha[gi];
+              tx.payments = [];
+              tx.paidAmount = 0;
+              tx.payDiscount = 0;
+              tx.isCash = false;
+              tx.isTransfer = false;
+            });
+            try { localStorage.setItem('txHistory', JSON.stringify(ha)); } catch (e) { alertDanger('Storage penuh!'); }
+            alertSuccess('Pembayaran <b>' + targets.length + ' nota</b> dibatalkan.');
+            exitMultiPayMode();
+            loadHistory();
+          });
+        };
+        btn.disabled = false;
+      } else {
+        if (lbl) lbl.textContent = 'Sisa Nota (tagihan)';
+        notaEl.textContent = fmtCurrency(0);
+        btn.style.background = '#10b981';
+        btn.innerHTML = icoBayar + 'Bayar';
+        btn.onclick = openMultiPayPopup;
+        btn.disabled = true;
+      }
+    };
+
+    try { console.log('[v53] revisi batal bayar aktif'); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v54: MATIKAN AUTO-SELECT saat ketik
+   nama barang / customer di halaman transaksi
+   - Ketikan ga lagi ke-commit otomatis
+   - Pilih manual tetep bisa: tap list / Enter / panah ↑↓
+   ========================================================== */
+(function() {
+  function install() {
+    if (typeof window.searchCustomer !== 'function' || typeof window.searchItemInRow !== 'function') {
+      setTimeout(install, 120);
+      return;
+    }
+    if (window.__v54) return;
+    window.__v54 = true;
+
+    /* customer: batalin timer auto-fill setiap kali search jalan */
+    var oC = window.searchCustomer;
+    window.searchCustomer = function() {
+      var r = oC.apply(this, arguments);
+      try { clearTimeout(autoFillCustTimer); } catch (e) {}
+      return r;
+    };
+
+    /* barang: sama — batalin timer auto-fill */
+    var oI = window.searchItemInRow;
+    window.searchItemInRow = function() {
+      var r = oI.apply(this, arguments);
+      try { clearTimeout(autoFillItemTimer); } catch (e) {}
+      return r;
+    };
+
+    try { console.log('[v54] auto-select dimatikan'); } catch (e) {}
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);

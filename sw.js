@@ -1,11 +1,11 @@
 /* ============================================================
-   sw.js — Service Worker · PT. BIOLI LESTARI  (v5.1)
+   sw.js — Service Worker · PT. BIOLI LESTARI  (v5.2)
    Navigasi      : network-first (race timeout) + fallback cache
    version.json  : network-only  (cek update selalu akurat)
    same-origin   : stale-while-revalidate
    cross-origin  : cache-first   (CDN: font / xlsx / html2canvas)
    ============================================================ */
-const CACHE       = 'bioli-v5.1';
+const CACHE       = 'bioli-v5.2';
 const NAV_TIMEOUT = 3500;
 const CORE = [
   './', './index.html', './manifest.json',
