@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v5.2</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v5.3</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='5.2';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='5.3';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -2636,7 +2636,7 @@ document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){if
       };
     }
   })(WRAP[w])}
-  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v5.2'}catch(e){}
+  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v5.3'}catch(e){}
   try{var sl=document.querySelector('.sp-load');if(sl)sl.textContent='Memuat sistem\u2026'}catch(e){}
   try{repairAll(document.body)}catch(e){}
   setTimeout(function(){try{repairAll(document.body)}catch(e){}},200);
@@ -8696,6 +8696,295 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
     };
 
     try { console.log('[v54] auto-select dimatikan'); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v55: LAPORAN PELUNASAN
+   1) Tombol Copy → clipboard (rekap per hari + grand total)
+   2) List di-group per hari + nominal pelunasan per hari
+   ========================================================== */
+(function() {
+  function fallbackCopy(t) {
+    var ta = document.createElement('textarea');
+    ta.value = t;
+    ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); alertSuccess('Disalin ke clipboard!'); }
+    catch (e) { alertDanger('Gagal menyalin'); }
+    document.body.removeChild(ta);
+  }
+
+  function getFilteredSettlements() {
+    var all = computeSettlements();
+    var q = (document.getElementById('searchSettlement').value || '').toLowerCase();
+    var list = all.filter(function(s) {
+      var str = (s.custName + ' ' + s.custCode + ' ' + s.invNo + ' ' + (s.note || '')).toLowerCase();
+      return !q || str.indexOf(q) >= 0;
+    });
+    list.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+    return list;
+  }
+
+  function statusOf(inv, byInv, ha) {
+    var t = byInv[inv];
+    if (!t) return 'TITIP';
+    var rem = ((t.region === 'LKOTM' || t.region === 'LKPRT') && typeof window.lkPayableRemaining === 'function')
+      ? window.lkPayableRemaining(t, ha) : getRemainingBalance(t, ha);
+    return rem <= 0 ? 'LUNAS' : 'TITIP';
+  }
+
+  function copySettlements() {
+    var list = getFilteredSettlements();
+    if (!list.length) return alertWarning('Tidak ada data pelunasan!');
+    var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+    var byInv = {};
+    ha.forEach(function(t) { byInv[t.invNo] = t; });
+
+    /* group per hari */
+    var days = [], dmap = {};
+    list.forEach(function(s) {
+      var key = new Date(s.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+      if (!dmap[key]) { dmap[key] = { key: key, items: [], total: 0, cash: 0, trf: 0 }; days.push(dmap[key]); }
+      dmap[key].items.push(s);
+      dmap[key].total += s.amount;
+      dmap[key].cash += s.cash || 0;
+      dmap[key].trf += s.transfer || 0;
+    });
+
+    var lines = [];
+    lines.push('*LAPORAN PELUNASAN* • PT. BIOLI LESTARI');
+    lines.push('========================');
+    var grand = 0;
+    days.forEach(function(g) {
+      lines.push('📅 ' + g.key.toUpperCase());
+      g.items.forEach(function(s) {
+        lines.push('• ' + s.custName + ' — ' + s.invNo + ' = ' + fmtCurrencyFull(s.amount) + ' (' + statusOf(s.invNo, byInv, ha) + ')');
+      });
+      var det = [];
+      if (g.cash > 0) det.push('Cash ' + fmtCurrencyFull(g.cash));
+      if (g.trf > 0) det.push('Transfer ' + fmtCurrencyFull(g.trf));
+      lines.push('▶ TOTAL = ' + fmtCurrencyFull(g.total) + (det.length ? '  (' + det.join(' + ') + ')' : ''));
+      lines.push('');
+      grand += g.total;
+    });
+    lines.push('========================');
+    lines.push('*▶ GRAND TOTAL = ' + fmtCurrencyFull(grand) + '*');
+    var txt = lines.join('\n');
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(
+        function() { alertSuccess('Disalin ke clipboard!'); },
+        function() { fallbackCopy(txt); }
+      );
+    } else fallbackCopy(txt);
+  }
+
+  /* ---- group DOM list per hari setelah render ---- */
+  function regroupByDay() {
+    var container = document.getElementById('settlementList');
+    if (!container) return;
+    var cards = Array.prototype.slice.call(container.querySelectorAll('.settle-card'));
+    if (!cards.length) return;
+    var groups = [], gmap = {};
+    cards.forEach(function(c) {
+      var meta = c.querySelector('.settle-meta');
+      var txt = meta ? meta.textContent : '';
+      var m = txt.match(/(\d{1,2}\s+\w{3,4}\s+\d{4})/);
+      var key = m ? m[1] : 'Tanpa tanggal';
+      if (!gmap[key]) { gmap[key] = { key: key, cards: [], total: 0 }; groups.push(gmap[key]); }
+      gmap[key].cards.push(c);
+      var amtEl = c.querySelector('.settle-amount');
+      gmap[key].total += parseMoney(amtEl ? amtEl.textContent : '');
+    });
+    var frag = document.createDocumentFragment();
+    groups.forEach(function(g) {
+      var h = document.createElement('div');
+      h.className = 'date-group';
+      h.style.cssText = 'display:flex;align-items:center;gap:6px';
+      h.innerHTML = '<svg class="ei"><use href="#icon-calendar"/></svg> ' + g.key +
+        '<span style="margin-left:auto;font-size:9px;font-weight:800;color:var(--success)">' + fmtCurrency(g.total) + '</span>';
+      frag.appendChild(h);
+      g.cards.forEach(function(c) { frag.appendChild(c); });
+    });
+    container.innerHTML = '';
+    container.appendChild(frag);
+  }
+
+  function install() {
+    if (typeof window.renderSettlementList !== 'function' || !document.getElementById('btnSettleSelect')) {
+      setTimeout(install, 150);
+      return;
+    }
+    if (window.__v55) return;
+    window.__v55 = true;
+
+    /* tombol Copy di sebelah Pilih */
+    var sel = document.getElementById('btnSettleSelect');
+    if (!document.getElementById('btnCopySettle')) {
+      var b = document.createElement('button');
+      b.id = 'btnCopySettle';
+      b.className = 'btn-hist-action';
+      b.style.flexShrink = '0';
+      b.innerHTML = '<svg><use href="#icon-copy"/></svg> Copy';
+      b.onclick = copySettlements;
+      sel.insertAdjacentElement('afterend', b);
+    }
+
+    /* wrap render → group per hari */
+    var oR = window.renderSettlementList;
+    window.renderSettlementList = function() {
+      var r = oR.apply(this, arguments);
+      setTimeout(regroupByDay, 5);
+      return r;
+    };
+
+    try { console.log('[v55] pelunasan: copy + group per hari'); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v56: COPY CLIPBOARD = FORMAT SHARE WA PELUNASAN
+   (per customer • status LUNAS/TITIP • total per customer)
+   ========================================================== */
+(function() {
+  function fallbackCopy(t) {
+    var ta = document.createElement('textarea');
+    ta.value = t;
+    ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); alertSuccess('Disalin ke clipboard!'); }
+    catch (e) { alertDanger('Gagal menyalin'); }
+    document.body.removeChild(ta);
+  }
+  function doCopy(t) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(
+        function() { alertSuccess('Disalin ke clipboard!'); },
+        function() { fallbackCopy(t); }
+      );
+    } else fallbackCopy(t);
+  }
+  function statusOf(inv, byInv, ha) {
+    var t = byInv[inv];
+    if (!t) return 'TITIP';
+    var rem = ((t.region === 'LKOTM' || t.region === 'LKPRT') && typeof window.lkPayableRemaining === 'function')
+      ? window.lkPayableRemaining(t, ha) : getRemainingBalance(t, ha);
+    return rem <= 0 ? 'LUNAS' : 'TITIP';
+  }
+
+  /* builder teks = sama persis dgn shareSettlementsToWA */
+  function buildText(list) {
+    var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+    var byInv = {};
+    ha.forEach(function(t) { byInv[t.invNo] = t; });
+    var map = {}, order = [];
+    list.forEach(function(s) {
+      var code = s.custCode || ('__NAME__' + s.custName);
+      if (!map[code]) { map[code] = { name: s.custName, code: s.custCode, rows: [] }; order.push(code); }
+      map[code].rows.push(s);
+    });
+    var txt = '', grand = 0;
+    order.forEach(function(code, gi) {
+      var g = map[code];
+      var head = g.code ? (g.name + ' (' + g.code + ')') : g.name;
+      if (gi > 0) txt += '\n';
+      txt += '*' + String(head).toUpperCase() + '*\n';
+      var sumAmt = 0, sumCmm = 0;
+      g.rows.forEach(function(r) {
+        var tagihan = (parseFloat(r.amount) || 0) + (parseFloat(r.cmm) || 0);
+        txt += r.invNo + ' = ' + fmtCurrencyFull(tagihan) + ' (' + statusOf(r.invNo, byInv, ha) + ')\n';
+        sumAmt += (parseFloat(r.amount) || 0);
+        sumCmm += (parseFloat(r.cmm) || 0);
+      });
+      if (sumCmm > 0) txt += '✂ POT CAS / CMM = ' + fmtCurrencyFull(sumCmm) + '\n';
+      txt += '*TOTAL = ' + fmtCurrencyFull(sumAmt) + '*\n';
+      grand += sumAmt;
+    });
+    txt += '\n*GRAND TOTAL = ' + fmtCurrencyFull(grand) + '*';
+    return txt;
+  }
+
+  function copyNew() {
+    var all = computeSettlements();
+    var q = (document.getElementById('searchSettlement').value || '').toLowerCase();
+    var list = all.filter(function(s) {
+      var str = (s.custName + ' ' + s.custCode + ' ' + s.invNo + ' ' + (s.note || '')).toLowerCase();
+      return !q || str.indexOf(q) >= 0;
+    });
+    list.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+    if (!list.length) return alertWarning('Tidak ada data pelunasan!');
+    doCopy(buildText(list));
+  }
+
+  function install() {
+    var btn = document.getElementById('btnCopySettle');
+    if (!btn) { setTimeout(install, 200); return; }
+    if (window.__v56) return;
+    window.__v56 = true;
+    btn.onclick = copyNew;   /* timpa handler copy lama (v55) */
+    try { console.log('[v56] copy = format share WA'); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v57:
+   1) Tombol Copy pindah ke bar biru, samping Share WA
+      (otomatis cuma muncul saat ada nota terpilih)
+   2) Bar TOTAL SETORAN sticky — tetep keliatan saat scroll
+   ========================================================== */
+(function() {
+  function findShareBtn() {
+    var scope = document.getElementById('rptTabSettlement') || document;
+    var btns = scope.querySelectorAll('button');
+    for (var i = 0; i < btns.length; i++) {
+      if (/Share\s*WA/i.test(btns[i].textContent || '')) return btns[i];
+    }
+    return null;
+  }
+
+  function install() {
+    var shareBtn = findShareBtn();
+    var copyBtn = document.getElementById('btnCopySettle');
+    if (!shareBtn || !copyBtn) { setTimeout(install, 200); return; }
+    if (window.__v57) return;
+    window.__v57 = true;
+
+    /* ---- cari bar biru (elemen yang memuat teks "terpilih") ---- */
+    var bar = shareBtn;
+    for (var up = 0; up < 5 && bar; up++) {
+      bar = bar.parentElement;
+      if (bar && /terpilih/i.test(bar.textContent || '')) break;
+    }
+    if (!bar) bar = shareBtn.parentElement;
+
+    /* ---- pindahkan Copy ke samping Share WA + style senada ---- */
+    copyBtn.className = '';
+    copyBtn.style.cssText = 'flex-shrink:0;border:0;border-radius:12px;padding:10px 14px;background:rgba(255,255,255,.22);color:#fff;font-weight:800;font-size:11px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;-webkit-tap-highlight-color:transparent';
+    copyBtn.innerHTML = '<svg style="width:13px;height:13px;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><use href="#icon-copy"/></svg> Copy';
+    shareBtn.insertAdjacentElement('afterend', copyBtn);
+
+    /* ---- bar biru sticky biar total setoran selalu keliatan ---- */
+    bar.style.position = 'sticky';
+    bar.style.top = '6px';
+    bar.style.zIndex = '70';
+    bar.style.boxShadow = '0 10px 24px rgba(37,99,235,.35)';
+
+    try { console.log('[v57] copy pindah + bar sticky'); } catch (e) {}
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
