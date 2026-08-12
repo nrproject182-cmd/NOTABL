@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v5.3</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v5.4</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='5.3';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='5.4';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -2636,7 +2636,7 @@ document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){if
       };
     }
   })(WRAP[w])}
-  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v5.3'}catch(e){}
+  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v5.4'}catch(e){}
   try{var sl=document.querySelector('.sp-load');if(sl)sl.textContent='Memuat sistem\u2026'}catch(e){}
   try{repairAll(document.body)}catch(e){}
   setTimeout(function(){try{repairAll(document.body)}catch(e){}},200);
@@ -8985,6 +8985,330 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
     bar.style.boxShadow = '0 10px 24px rgba(37,99,235,.35)';
 
     try { console.log('[v57] copy pindah + bar sticky'); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v58: COPY CLIPBOARD = HANYA NOTA YANG DICENTANG
+   ========================================================== */
+(function() {
+  function fallbackCopy(t) {
+    var ta = document.createElement('textarea');
+    ta.value = t;
+    ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); alertSuccess('Disalin ke clipboard!'); }
+    catch (e) { alertDanger('Gagal menyalin'); }
+    document.body.removeChild(ta);
+  }
+  function doCopy(t) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(
+        function() { alertSuccess('Disalin ' + t.split('\n').filter(function(l) { return l.indexOf(' = ') >= 0; }).length + ' nota ke clipboard!'); },
+        function() { fallbackCopy(t); }
+      );
+    } else fallbackCopy(t);
+  }
+  function statusOf(inv, byInv, ha) {
+    var t = byInv[inv];
+    if (!t) return 'TITIP';
+    var rem = ((t.region === 'LKOTM' || t.region === 'LKPRT') && typeof window.lkPayableRemaining === 'function')
+      ? window.lkPayableRemaining(t, ha) : getRemainingBalance(t, ha);
+    return rem <= 0 ? 'LUNAS' : 'TITIP';
+  }
+
+  /* format = sama persis dgn share WA (per customer) */
+  function buildText(list) {
+    var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+    var byInv = {};
+    ha.forEach(function(t) { byInv[t.invNo] = t; });
+    var map = {}, order = [];
+    list.forEach(function(s) {
+      var code = s.custCode || ('__NAME__' + s.custName);
+      if (!map[code]) { map[code] = { name: s.custName, code: s.custCode, rows: [] }; order.push(code); }
+      map[code].rows.push(s);
+    });
+    var txt = '', grand = 0;
+    order.forEach(function(code, gi) {
+      var g = map[code];
+      var head = g.code ? (g.name + ' (' + g.code + ')') : g.name;
+      if (gi > 0) txt += '\n';
+      txt += '*' + String(head).toUpperCase() + '*\n';
+      var sumAmt = 0, sumCmm = 0;
+      g.rows.forEach(function(r) {
+        var tagihan = (parseFloat(r.amount) || 0) + (parseFloat(r.cmm) || 0);
+        txt += r.invNo + ' = ' + fmtCurrencyFull(tagihan) + ' (' + statusOf(r.invNo, byInv, ha) + ')\n';
+        sumAmt += (parseFloat(r.amount) || 0);
+        sumCmm += (parseFloat(r.cmm) || 0);
+      });
+      if (sumCmm > 0) txt += '✂ POT CAS / CMM = ' + fmtCurrencyFull(sumCmm) + '\n';
+      txt += '*TOTAL = ' + fmtCurrencyFull(sumAmt) + '*\n';
+      grand += sumAmt;
+    });
+    txt += '\n*GRAND TOTAL = ' + fmtCurrencyFull(grand) + '*';
+    return txt;
+  }
+
+  function copySelected() {
+    if (typeof selectedSettleKeys === 'undefined' || !selectedSettleKeys.size) {
+      return alertWarning('Centang dulu nota yang mau dicopy!');
+    }
+    var all = computeSettlements();
+    var list = all.filter(function(s) { return selectedSettleKeys.has(s.key); });
+    if (!list.length) return alertWarning('Tidak ada data terpilih!');
+    list.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+    doCopy(buildText(list));
+  }
+
+  function install() {
+    var btn = document.getElementById('btnCopySettle');
+    if (!btn) { setTimeout(install, 200); return; }
+    if (window.__v58) return;
+    window.__v58 = true;
+    btn.onclick = copySelected;   /* timpa handler lama (v56) */
+    try { console.log('[v58] copy = hanya yang dicentang'); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v59: FIX HITUNGAN POPUP COPY = JUMLAH DICENTANG
+   ========================================================== */
+(function() {
+  function fallbackCopy(t, n) {
+    var ta = document.createElement('textarea');
+    ta.value = t;
+    ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); alertSuccess('Disalin ' + n + ' nota ke clipboard!'); }
+    catch (e) { alertDanger('Gagal menyalin'); }
+    document.body.removeChild(ta);
+  }
+  function doCopy(t, n) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(
+        function() { alertSuccess('Disalin ' + n + ' nota ke clipboard!'); },
+        function() { fallbackCopy(t, n); }
+      );
+    } else fallbackCopy(t, n);
+  }
+  function statusOf(inv, byInv, ha) {
+    var t = byInv[inv];
+    if (!t) return 'TITIP';
+    var rem = ((t.region === 'LKOTM' || t.region === 'LKPRT') && typeof window.lkPayableRemaining === 'function')
+      ? window.lkPayableRemaining(t, ha) : getRemainingBalance(t, ha);
+    return rem <= 0 ? 'LUNAS' : 'TITIP';
+  }
+  function buildText(list) {
+    var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+    var byInv = {};
+    ha.forEach(function(t) { byInv[t.invNo] = t; });
+    var map = {}, order = [];
+    list.forEach(function(s) {
+      var code = s.custCode || ('__NAME__' + s.custName);
+      if (!map[code]) { map[code] = { name: s.custName, code: s.custCode, rows: [] }; order.push(code); }
+      map[code].rows.push(s);
+    });
+    var txt = '', grand = 0;
+    order.forEach(function(code, gi) {
+      var g = map[code];
+      var head = g.code ? (g.name + ' (' + g.code + ')') : g.name;
+      if (gi > 0) txt += '\n';
+      txt += '*' + String(head).toUpperCase() + '*\n';
+      var sumAmt = 0, sumCmm = 0;
+      g.rows.forEach(function(r) {
+        var tagihan = (parseFloat(r.amount) || 0) + (parseFloat(r.cmm) || 0);
+        txt += r.invNo + ' = ' + fmtCurrencyFull(tagihan) + ' (' + statusOf(r.invNo, byInv, ha) + ')\n';
+        sumAmt += (parseFloat(r.amount) || 0);
+        sumCmm += (parseFloat(r.cmm) || 0);
+      });
+      if (sumCmm > 0) txt += '✂ POT CAS / CMM = ' + fmtCurrencyFull(sumCmm) + '\n';
+      txt += '*TOTAL = ' + fmtCurrencyFull(sumAmt) + '*\n';
+      grand += sumAmt;
+    });
+    txt += '\n*GRAND TOTAL = ' + fmtCurrencyFull(grand) + '*';
+    return txt;
+  }
+  function copySel() {
+    if (typeof selectedSettleKeys === 'undefined' || !selectedSettleKeys.size) {
+      return alertWarning('Centang dulu nota yang mau dicopy!');
+    }
+    var all = computeSettlements();
+    var list = all.filter(function(s) { return selectedSettleKeys.has(s.key); });
+    if (!list.length) return alertWarning('Tidak ada data terpilih!');
+    list.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+    doCopy(buildText(list), list.length);   /* ← hitungan bener: jumlah centang */
+  }
+
+  function install() {
+    var btn = document.getElementById('btnCopySettle');
+    if (!btn) { setTimeout(install, 200); return; }
+    if (window.__v59) return;
+    window.__v59 = true;
+    btn.onclick = copySel;   /* timpa handler v58 */
+    try { console.log('[v59] fix hitungan popup copy'); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v60:
+   1) Share +Modal = harga setelah diskon kategori + diskon cash
+      (diskon cash/special/CMM ikut kalau nota cash tanpa tempo)
+   2) Hilangkan titik hitam (•) di baris kosong faktur
+   ========================================================== */
+(function() {
+  /* ---------- hitung harga modal per baris ---------- */
+  function modalExtra(tx) {
+    var sub = tx.subTotal || 0;
+    var extra = 0;
+    var cashNoTempo = !!tx.isCash || (((tx.cust && tx.cust.tempo) || 0) === 0);
+    if (cashNoTempo) {
+      var cmm = 0;
+      (tx.payments || []).forEach(function(p) { cmm += p.cmm || 0; });
+      extra = (tx.specialDiscAmount || 0) + cmm;   // diskon cash + CMM
+    }
+    return { sub: sub, extra: extra };
+  }
+
+  function addModalV60(node, tx) {
+    var cust = tx && tx.cust ? tx.cust : null;
+    var info = modalExtra(tx);
+    Array.prototype.forEach.call(node.querySelectorAll('table'), function(tb) {
+      var head = tb.querySelector('thead tr');
+      if (!head || head.children.length < 3) return;
+      var thM = document.createElement('th');
+      thM.textContent = 'H. MODAL';
+      thM.style.cssText = 'text-align:right;padding:6px 6px;font-size:8.5px;letter-spacing:.3px;border-right:1px solid rgba(255,255,255,.1);width:1%;white-space:nowrap';
+      head.insertBefore(thM, head.children[head.children.length - 1]);
+
+      Array.prototype.forEach.call(tb.querySelectorAll('tbody tr'), function(tr) {
+        if (tr.children.length === 1) {
+          var td0 = tr.children[0];
+          td0.setAttribute('colspan', String(parseInt(td0.getAttribute('colspan') || '1', 10) + 1));
+          return;
+        }
+        var cells = tr.children;
+        var qty = parseInt(cells[0].textContent, 10) || 1;
+        var code = (cells[1] && cells[1].textContent || '').trim();
+        var price = parseMoney(cells[cells.length - 2] ? cells[cells.length - 2].textContent : '');
+        var rowTotal = price * qty;
+
+        var im = findItemByCode(code);
+        if (!im && cells.length >= 5) im = findItemByDesc(cells[2].textContent || '');
+        var cat = im ? im.cat : '';
+        var d = (cust && cust.disc && cust.disc[cat]) ? cust.disc[cat] : 0;
+
+        var afterCat = rowTotal * (1 - d / 100);
+        var extraShare = info.sub > 0 ? info.extra * (rowTotal / info.sub) : 0;
+        var modalTotal = Math.max(0, afterCat - extraShare);
+        var unit = modalTotal / qty;
+
+        var tdM = document.createElement('td');
+        tdM.style.cssText = 'text-align:right;padding:5px 6px;border-top:1px solid #e2e8f0;font-family:\'JetBrains Mono\',monospace;font-size:10px;white-space:nowrap;width:1%;color:#059669;font-weight:700';
+        tdM.textContent = fmtCurrencyFull(unit);
+        tr.insertBefore(tdM, cells[cells.length - 1]);
+      });
+    });
+  }
+
+  function install() {
+    if (typeof window.buildInvoiceDOM !== 'function' || typeof window.shareHistoryInvoice !== 'function') {
+      setTimeout(install, 150);
+      return;
+    }
+    if (window.__v60) return;
+    window.__v60 = true;
+    window.__shareWithModal2 = false;
+
+    /* ---- wrap buildInvoiceDOM: hapus titik + kolom modal baru ---- */
+    var oB = window.buildInvoiceDOM;
+    window.buildInvoiceDOM = function(tx) {
+      var node = oB.apply(this, arguments);
+      try {
+        /* 2) hilangkan titik hitam di baris kosong */
+        Array.prototype.forEach.call(node.querySelectorAll('td'), function(td) {
+          if ((td.textContent || '').trim() === '•') td.textContent = '';
+        });
+        /* 1) kolom H. MODAL versi baru */
+        if (window.__shareWithModal2) addModalV60(node, tx);
+      } catch (e) {}
+      return node;
+    };
+
+    function doShare(tx, withModal) {
+      window.__shareWithModal2 = !!withModal;
+      previewInvoice(tx);
+      setTimeout(function() {
+        var inv = document.getElementById('invoiceShareStage').firstElementChild;
+        if (inv) __bioliShareInvoice(inv, tx.invNo, null, '');
+        setTimeout(function() { window.__shareWithModal2 = false; }, 1500);
+      }, 400);
+    }
+
+    /* ---- popup share history ---- */
+    window.shareHistoryInvoice = function(gi) {
+      try {
+        var ha = JSON.parse(localStorage.getItem('txHistory')) || [];
+        var tx = ha[gi];
+        if (!tx) { alertWarning('Data tidak ditemukan'); return; }
+        if (tx.isOrder) {
+          var g2 = (tx.finalGrandTotal != null) ? tx.finalGrandTotal : (tx.grandTotal || 0);
+          var r2 = (tx.rows || []).map(function(r) { return { code: r.code, desc: r.desc, qty: r.qty }; });
+          window.open('https://wa.me/?text=' + encodeURIComponent(buildOrderShareText(tx.cust, r2, g2)), '_blank');
+          return;
+        }
+        enqueuePopup({
+          type: 'question', title: 'Share Faktur',
+          message: '<b>' + escapeHtml(tx.invNo) + '</b><br>' + escapeHtml(tx.cust ? tx.cust.name : '-'),
+          buttons: [
+            { text: 'Preview', cls: 'secondary', action: 'preview' },
+            { text: 'Share ke WA', cls: 'primary', action: 'share' },
+            { text: 'Share +Modal', cls: 'secondary', action: 'sharemodal' }
+          ],
+          callback: function(a) {
+            if (a === 'preview') { window.__shareWithModal2 = false; previewInvoice(tx); }
+            else if (a === 'share') doShare(tx, false);
+            else if (a === 'sharemodal') doShare(tx, true);
+          }
+        });
+      } catch (e) { alertDanger('Gagal: ' + escapeHtml(e && e.message ? e.message : String(e))); }
+    };
+
+    /* ---- popup share draft (tombol KIRIM WA) ---- */
+    window.sendDraftInvoiceToWA = function(ev) {
+      if (currentMode === 'order') { shareOrderToWA(); return; }
+      if (!currentCustomer) { alertWarning('Pilih customer dulu!'); return; }
+      if (!collectValidRows().length) { alertWarning('Isi barang dulu!'); return; }
+      enqueuePopup({
+        type: 'question', title: 'Kirim Faktur',
+        message: 'Pilih aksi untuk <b>' + escapeHtml(currentCustomer.name) + '</b>:',
+        buttons: [
+          { text: 'Preview Faktur', cls: 'secondary', action: 'preview' },
+          { text: 'Share ke WhatsApp', cls: 'primary', action: 'share' },
+          { text: 'Share +Modal', cls: 'secondary', action: 'sharemodal' }
+        ],
+        callback: function(a) {
+          if (a === 'preview') { window.__shareWithModal2 = false; try { previewInvoice(buildCurrentDraft()); } catch (e) { alertDanger('Gagal: ' + escapeHtml(e && e.message ? e.message : String(e))); } }
+          else if (a === 'share') doShare(buildCurrentDraft(), false);
+          else if (a === 'sharemodal') doShare(buildCurrentDraft(), true);
+        }
+      });
+    };
+
+    try { console.log('[v60] share modal v2 + tanpa titik'); } catch (e) {}
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
