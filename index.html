@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v5.4</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v5.5</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='5.4';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='5.5';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -2636,7 +2636,7 @@ document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){if
       };
     }
   })(WRAP[w])}
-  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v5.4'}catch(e){}
+  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v5.5'}catch(e){}
   try{var sl=document.querySelector('.sp-load');if(sl)sl.textContent='Memuat sistem\u2026'}catch(e){}
   try{repairAll(document.body)}catch(e){}
   setTimeout(function(){try{repairAll(document.body)}catch(e){}},200);
@@ -9313,6 +9313,303 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
   else install();
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v61:
+   1) Draft auto-load TANPA popup saat buka aplikasi
+   2) Opsi login "Selamanya" (logout hanya lewat tombol Logout)
+   3) Hapus tombol Gabung JSON di header Pelanggan (yg di Menu tetap)
+   4) Kartu customer: sales sebaris dgn nama + kode + tempo
+   5) Default filter Riwayat = Reguler (bukan Semua)
+   ========================================================== */
+(function(){
+  'use strict';
+  if(window.__v61)return;window.__v61=true;
+
+  /* ---------- 5) default riwayat = reguler ---------- */
+  try{window.invoiceTypeFilter='reguler';}catch(e){}
+
+  /* ---------- 1) draft auto-load, tanpa popup apa pun ---------- */
+  window.__suppressDraftToast=false;
+  var _oAlertSuccess=window.alertSuccess;
+  window.alertSuccess=function(m){
+    if(window.__suppressDraftToast&&/Draft dimuat/.test(String(m)))return; /* telan toast draft */
+    return _oAlertSuccess.apply(this,arguments);
+  };
+  var _oShowConfirm=window.showConfirm;
+  window.showConfirm=function(m,cb){
+    if(typeof m==='string'&&m.indexOf('Draft transaksi ditemukan')>=0){
+      /* langsung muat draft, jangan tampilin popup */
+      window.__suppressDraftToast=true;
+      setTimeout(function(){
+        try{cb(true);}catch(e){}
+        setTimeout(function(){window.__suppressDraftToast=false;},600);
+      },0);
+      return;
+    }
+    return _oShowConfirm.apply(this,arguments);
+  };
+
+  /* ---------- 2) login selamanya ---------- */
+  window.getDurationLabel=function(d){return d==='session'?'Sesi Ini':d==='1day'?'1 Hari':d==='1week'?'1 Minggu':d==='forever'?'Selamanya':d;};
+
+  window.showLoginPopup=function(){enqueuePopup({type:'form',title:'Login',message:'<div style="font-size:10px;color:var(--text-light);text-align:center">Masukkan password untuk mengakses fitur</div>',fields:[{key:'password',label:'Password',type:'password',required:true},{key:'duration',label:'Durasi',type:'select',value:loginDuration,options:[{value:'session',label:'Sesi Ini'},{value:'1day',label:'1 Hari'},{value:'1week',label:'1 Minggu'},{value:'forever',label:'Selamanya'}]}],onConfirm:function(d){
+      if(d.password!==(localStorage.getItem('appPass')||APP_DEFAULT_PASS))return alertDanger('Password salah!');
+      loginDuration=d.duration;
+      if(d.duration==='session'){loginExpireAt=0;sessionStorage.setItem('loginSession','active');localStorage.removeItem('loginExpireAt');}
+      else if(d.duration==='forever'){loginExpireAt=0;localStorage.setItem('loginSession','active');localStorage.setItem('loginDuration','forever');localStorage.removeItem('loginExpireAt');}
+      else{loginExpireAt=Date.now()+SESSION_DURATIONS[d.duration];localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',d.duration);localStorage.setItem('loginSession','active');}
+      isUnlocked=true;updateLoginUI();alertSuccess('Login berhasil! ('+getDurationLabel(d.duration)+')');
+    }});};
+
+  window.checkLoginSession=function(){
+    var sd=localStorage.getItem('loginDuration');
+    var ls=localStorage.getItem('loginSession')==='active';
+    var ss=sessionStorage.getItem('loginSession')==='active';
+    if(sd==='forever'&&ls){isUnlocked=true;loginDuration='forever';loginExpireAt=0;return true;} /* kekal s.d. logout manual */
+    var se=localStorage.getItem('loginExpireAt');
+    if(se){var e=parseInt(se,10);if(isFinite(e)&&Date.now()<e){isUnlocked=true;loginExpireAt=e;loginDuration=sd||'1week';try{localStorage.setItem('loginSession','active');}catch(_){}return true;}
+      localStorage.removeItem('loginExpireAt');localStorage.removeItem('loginDuration');localStorage.removeItem('loginSession');}
+    if(ls||ss){isUnlocked=true;loginDuration=sd||'session';return true;}
+    return false;
+  };
+
+  /* ---------- DOM stuff (jalan setelah ready) ---------- */
+  function installDom(){
+
+    /* ---------- 3) hapus tombol Gabung JSON di header ---------- */
+    function killBtn(){var b=document.getElementById('mgLaunchBtn');if(b)b.remove();}
+    killBtn();setTimeout(killBtn,250);setTimeout(killBtn,900); /* jaga2 kalau inject-nya telat */
+
+    /* ---------- 4) sales pindah ke baris nama ---------- */
+    function rearrangeCustCards(){
+      document.querySelectorAll('#custList .cust-card').forEach(function(card){
+        var top=card.querySelector('.ml-top');
+        if(!top||top.dataset.v61)return;
+        top.dataset.v61='1';
+        var meta=card.querySelector('.ml-meta[data-col="sales"]');
+        if(meta){
+          var tag=meta.querySelector('.ml-tag.sales');
+          if(tag&&!top.contains(tag)){
+            tag.setAttribute('data-col','sales');           /* biar tetap ikut toggle kolom Sales */
+            tag.style.flexShrink='0';
+            var code=top.querySelector('.ml-tag.code');
+            if(code)top.insertBefore(tag,code);else top.appendChild(tag); /* urutan: nama | sales | kode | tempo */
+          }
+          meta.remove();
+        }
+      });
+      if(typeof applyColumnVisibility==='function')applyColumnVisibility('cust');
+    }
+    if(typeof window.renderTable==='function'&&!window.renderTable._v61){
+      var oRT=window.renderTable;
+      window.renderTable=function(type){var r=oRT.apply(this,arguments);if(type==='cust')setTimeout(rearrangeCustCards,0);return r;};
+      window.renderTable._v61=true;
+    }
+    rearrangeCustCards();
+    try{console.log('[v61] draft silent + login forever + layout customer + default reguler');}catch(e){}
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installDom);
+  else installDom();
+})();
+</script>
+<style id="v62r-css">
+/* grid 2 kolom di modal Edit Pelanggan */
+.v62-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.v62-grid .form-group{margin-bottom:12px;min-width:0}
+/* list rekomendasi barang: scroll mulus di HP */
+#globalItemAcList{-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
+</style>
+<script>
+/* ==========================================================
+   PATCH v62 REVISI (ganti v62 + v63, satu blok aja):
+   1) Hapus kategori → opsi: bersihkan diskon customer / tidak
+   2) Modal Edit Pelanggan 2 kolom (Kode|Tempo, Nama|Sales)
+   3) Rekomendasi barang: gak terpotong, bisa di-scroll,
+      dan SCROLL ≠ PILIH (tap baru milih, geser = scroll)
+   4) Nomor manual → counter lanjut dari nomor manual,
+      nomor terdaftar otomatis dilewati
+   ========================================================== */
+(function(){
+  'use strict';
+  if(window.__v62R)return;window.__v62R=true;
+
+  /* ============ 1) POPUP OPSI HAPUS KATEGORI ============ */
+  window.confirmDeleteCategory=function(idx){
+    if(!requireLogin())return;
+    var cat=_delCatList[idx];
+    var menu=document.getElementById('deleteCatMenu');if(menu)menu.classList.remove('open');
+    var cnt=items.filter(function(x){return normCat(x.cat)===cat;}).length;
+    var custCnt=customers.filter(function(c){return c.disc&&(c.disc[cat]!==undefined);}).length;
+    enqueuePopup({type:'danger',title:'Hapus Kategori',
+      message:'Hapus kategori "<b>'+escapeHtml(cat)+'</b>" + <b>'+cnt+'</b> barangnya?'+
+        (custCnt>0?'<br><small>'+custCnt+' customer punya diskon kategori ini. Pilih perlakuannya:</small>':''),
+      buttons:[
+        {text:'Hapus + Bersihkan Diskon Customer',cls:'danger',action:'full'},
+        {text:'Hapus Kategori Saja (diskon tetap)',cls:'primary',action:'keep'},
+        {text:'Batal',cls:'secondary',action:'no'}
+      ],
+      callback:function(a){
+        if(a!=='full'&&a!=='keep')return;
+        registeredCategories=registeredCategories.filter(function(c){return c!==cat;});
+        localStorage.setItem('registeredCategories',JSON.stringify(registeredCategories));
+        items=items.filter(function(i){return normCat(i.cat)!==cat;});
+        if(a==='full'){
+          customers.forEach(function(c){if(c.disc)delete c.disc[cat];});
+          localStorage.setItem('masterCust',JSON.stringify(customers));
+        }
+        localStorage.setItem('masterItems',JSON.stringify(items));
+        saveStockData();
+        renderTable('item');renderStockTable();renderTable('cust');
+        if(typeof updateCategoryFilterDropdown==='function'){updateCategoryFilterDropdown('item');updateCategoryFilterDropdown('stock');}
+        alertSuccess(a==='full'?'Kategori dihapus + diskon customer dibersihkan!':'Kategori dihapus (diskon customer tetap).');
+      }});
+  };
+
+  /* ============ 2) MODAL CUSTOMER 2 KOLOM ============ */
+  function restyleCustModal(){
+    var mc=document.querySelector('#custModal .modal-content');
+    if(!mc||mc.dataset.v62)return;mc.dataset.v62='1';
+    var grid=document.createElement('div');grid.className='v62-grid';
+    ['mCustCode','mCustTempo','mCustName','mCustSales'].forEach(function(id){
+      var inp=document.getElementById(id);
+      var g=inp?inp.closest('.form-group'):null;
+      if(g)grid.appendChild(g);
+    });
+    var disc=mc.querySelector('.disc-section-title');
+    if(disc)mc.insertBefore(grid,disc);else mc.appendChild(grid);
+  }
+
+  /* ============ 3) REKOMENDASI BARANG ============ */
+  /* 3a. jangan sembunyikan list kalau yang di-scroll list-nya sendiri */
+  window.hideInlineAcListForce=function(){
+    var e=window.event;
+    if(e&&e.type==='scroll'&&itemAcEl&&e.target&&itemAcEl.contains(e.target))return;
+    hideAllInlineAcLists();
+  };
+
+  /* 3b. posisi pintar: bawah sempit → tampil di atas, tinggi layak */
+  window.positionItemAc=function(){
+    var ac=itemAcEl;
+    if(!ac||ac.style.display==='none'||!currentDescInput)return;
+    var r=currentDescInput.getBoundingClientRect();
+    var vw=window.innerWidth,vh=window.innerHeight;
+    ac.style.left='0px';ac.style.top='0px';ac.style.width='max-content';ac.style.visibility='hidden';
+    var cw=ac.offsetWidth;ac.style.visibility='';
+    var w=Math.min(cw,vw-16);
+    var left=r.left;if(left+w>vw-8)left=vw-8-w;if(left<8)left=8;
+    var maxBelow=Math.min(330,vh-r.bottom-8);
+    var maxAbove=Math.min(330,r.top-8);
+    var useBelow=(maxBelow>=140||maxBelow>=maxAbove);
+    var maxH=Math.max(120,useBelow?maxBelow:maxAbove);
+    ac.style.maxHeight=maxH+'px';
+    ac.style.width=w+'px';
+    var top=useBelow?(r.bottom+2):Math.max(8,r.top-ac.offsetHeight-2);
+    ac.style.left=left+'px';ac.style.top=top+'px';
+  };
+
+  /* 3c. SCROLL ≠ PILIH: geser = scroll, tap = pilih */
+  var tStart=null,tMoved=false;
+  function inAc(t){return itemAcEl&&itemAcEl.style.display!=='none'&&t&&itemAcEl.contains(t);}
+  document.addEventListener('touchstart',function(e){
+    if(inAc(e.target)&&e.touches&&e.touches[0]){
+      var t=e.touches[0];tStart={x:t.clientX,y:t.clientY};tMoved=false;
+    }else tStart=null;
+  },true);
+  document.addEventListener('touchmove',function(e){
+    if(tStart&&inAc(e.target)&&e.touches&&e.touches[0]){
+      var t=e.touches[0];
+      if(Math.abs(t.clientX-tStart.x)>8||Math.abs(t.clientY-tStart.y)>8)tMoved=true;
+    }
+  },true);
+  document.addEventListener('touchend',function(e){
+    if(tStart&&inAc(e.target)&&tMoved){
+      e.stopPropagation();  /* handler pilih di row gak jalan */
+      e.preventDefault();   /* click sintetis ikut ditekan */
+      window.__acSwallowClick=true;
+      setTimeout(function(){window.__acSwallowClick=false;},350);
+    }
+    tStart=null;tMoved=false;
+  },true);
+  document.addEventListener('click',function(e){
+    if(window.__acSwallowClick&&inAc(e.target)){
+      e.stopPropagation();e.preventDefault();
+      window.__acSwallowClick=false;
+    }
+  },true);
+  if(typeof window.selectItemFromAcRow==='function'&&!window.selectItemFromAcRow._v62r){
+    var oSel=window.selectItemFromAcRow;
+    window.selectItemFromAcRow=function(row){
+      if(window.__acSwallowClick)return;
+      return oSel.apply(this,arguments);
+    };
+    window.selectItemFromAcRow._v62r=true;
+  }
+
+  /* ============ 4) PENOMORAN NOTA ============ */
+  function nextAvail(m){
+    var c=getInvCounter(getCounterTypeForMode(m));
+    var nn=(c.lastNum||0)+1;
+    while(isInvNoExists(getPrefixForMode(m)+padInvNum(nn)))nn++;
+    return nn;
+  }
+  window.consumeInvNo=function(mode){
+    var m=mode||(isPiMode?'pi':currentMode);
+    var ct=getCounterTypeForMode(m);
+    var c=getInvCounter(ct);
+    var inp=document.getElementById('invNumInput');
+    var requested=null;
+    if(manualInvMode&&manualInvNumber)requested=manualInvNumber;
+    else if(invUserEdited&&inp)requested=inp.value.trim();
+    var full,usedNum=null;
+    if(requested!==null&&requested!==''){
+      var isNum=/^\d+$/.test(requested);
+      var finalStr=isNum?padInvNum(Math.max(1,parseInt(requested,10))):requested;
+      full=getPrefixForMode(m)+finalStr;
+      if(isInvNoExists(full))return null;               /* duplikat → ditolak */
+      usedNum=isNum?parseInt(requested,10):null;        /* nomor manual jadi patokan counter */
+    }else{
+      var nn=nextAvail(m);                              /* skip nomor terdaftar */
+      full=getPrefixForMode(m)+padInvNum(nn);
+      usedNum=nn;
+    }
+    if(usedNum!==null&&usedNum>(c.lastNum||0)){c.lastNum=usedNum;saveInvCounter(ct,c);}
+    manualInvMode=false;manualInvNumber='';
+    try{localStorage.setItem('manualInvMode','false');localStorage.removeItem('manualInvNumber');}catch(e){}
+    if(inp){inp.classList.remove('manual-mode');inp.placeholder='';inp.value=padInvNum(nextAvail(m));}
+    invUserEdited=false;
+    return full;
+  };
+  window.setInvNumPreview=function(){
+    updateInvPrefix();
+    var sm=localStorage.getItem('manualInvMode'),sn=localStorage.getItem('manualInvNumber')||'',inp=document.getElementById('invNumInput');
+    if(sm==='true'){manualInvMode=true;manualInvNumber=sn;inp.classList.add('manual-mode');inp.value=sn;inp.placeholder='No. Manual...';invUserEdited=!!sn;}
+    else{manualInvMode=false;manualInvNumber='';inp.classList.remove('manual-mode');inp.placeholder='';inp.value=padInvNum(nextAvail(isPiMode?'pi':currentMode));invUserEdited=false;}
+  };
+  window.invStep=function(d){
+    var inp=document.getElementById('invNumInput');
+    var m=isPiMode?'pi':currentMode;
+    if(manualInvMode){
+      manualInvMode=false;manualInvNumber='';
+      try{localStorage.setItem('manualInvMode','false');localStorage.removeItem('manualInvNumber');}catch(e){}
+      inp.classList.remove('manual-mode');inp.placeholder='';
+      var nn=nextAvail(m);
+      if(d<0){nn=Math.max(1,nn-1);while(nn>1&&isInvNoExists(getPrefixForMode(m)+padInvNum(nn)))nn--;}
+      inp.value=padInvNum(nn);invUserEdited=true;return;
+    }
+    var c=parseInt(inp.value,10)||1;var n2=c+d;if(n2<1)n2=1;
+    if(d>0){while(isInvNoExists(getPrefixForMode(m)+padInvNum(n2)))n2++;}
+    else{while(n2>1&&isInvNoExists(getPrefixForMode(m)+padInvNum(n2)))n2--;}
+    inp.value=padInvNum(n2);invUserEdited=true;inp.focus();inp.select();
+  };
+
+  /* ============ INIT ============ */
+  function init(){restyleCustModal();try{console.log('[v62R] active');}catch(e){}}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+  else init();
 })();
 </script>
 </body>
