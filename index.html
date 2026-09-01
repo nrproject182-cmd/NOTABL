@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v5.6</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v5.7</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='5.6';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='5.7';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -2636,7 +2636,7 @@ document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){if
       };
     }
   })(WRAP[w])}
-  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v5.6'}catch(e){}
+  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v5.7'}catch(e){}
   try{var sl=document.querySelector('.sp-load');if(sl)sl.textContent='Memuat sistem\u2026'}catch(e){}
   try{repairAll(document.body)}catch(e){}
   setTimeout(function(){try{repairAll(document.body)}catch(e){}},200);
@@ -9915,19 +9915,27 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
 #invoiceShareModal .ish-acts{display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:8px}
 #invoiceShareModal .ish-acts .btn-pro-fixed{width:100%;height:40px;font-size:11px;font-weight:700;border-radius:11px;justify-content:center}
 </style>
+<style id="v67r6-css">
+#invoiceShareModal .inv-share-head{flex-direction:column;align-items:stretch;gap:9px;padding:12px 14px}
+#invoiceShareModal .ish-title{justify-content:center;font-size:13px}
+#invoiceShareModal .ish-acts{display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:8px}
+#invoiceShareModal .ish-acts .btn-pro-fixed{width:100%;height:40px;font-size:11px;font-weight:700;border-radius:11px;justify-content:center}
+#invoiceShareModal .ish-acts .btn-pro-fixed[disabled]{opacity:.6;cursor:wait}
+</style>
 <script>
 /* ==========================================================
-   PATCH v67 R4 (FINAL, ganti semua v67 sebelumnya):
-   - [Salin] = salin PNG ke clipboard (icon gambar)
-   - [WhatsApp] / [+Modal] = share GAMBAR DOANG lewat Web Share
-     API → pilih WhatsApp → pilih kontak → gambar UDAH NEMPEL
-     di chat, tinggal tekan kirim. TANPA teks, TANPA auto-download.
-   - Klik di luar popup = tutup
+   PATCH v67 R6 (FINAL, ganti v67 R5):
+   - Browser jadul: TETAP munculin popup share sistem,
+     JANGAN auto-download (download dihapus total dari alur)
+   - Efek loading (spinner) di tombol saat diklik
+   - Pre-render + cache tetap (share cepat, gesture valid)
    ========================================================== */
 (function(){
   'use strict';
-  if(window.__v67R4)return;window.__v67R4=true;
+  if(window.__v67R6)return;window.__v67R6=true;
   var currentShareTx=null;
+  var SCALE=2;
+  var cache={tx:null,nBlob:null,mBlob:null,nP:null,mP:null};
 
   /* icon gambar */
   (function(){
@@ -9939,6 +9947,52 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
       sp.appendChild(s);
     }
   })();
+
+  function msg(e){return escapeHtml(e&&e.message?e.message:String(e));}
+
+  /* ---------- render blob (offscreen) ---------- */
+  function renderBlob(withModal){
+    return new Promise(function(resolve,reject){
+      try{
+        if(typeof html2canvas!=='function')return reject(new Error('html2canvas belum termuat.'));
+        var node;
+        if(withModal){window.__shareWithModal2=true;node=buildInvoiceDOM(currentShareTx);window.__shareWithModal2=false;}
+        else node=buildInvoiceDOM(currentShareTx);
+        node.style.transform='';
+        var stage=getOffscreenStage();
+        stage.innerHTML='';stage.appendChild(node);
+        setTimeout(function(){
+          html2canvas(node,{scale:SCALE,backgroundColor:'#ffffff',useCORS:true,allowTaint:true,logging:false,windowWidth:1123}).then(function(canvas){
+            stage.innerHTML='';
+            canvas.toBlob(function(b){b?resolve(b):reject(new Error('blob gagal'));},'image/png',0.92);
+          }).catch(function(e){stage.innerHTML='';reject(e);});
+        },30);
+      }catch(e){reject(e);}
+    });
+  }
+
+  function warmup(){
+    cache.tx=currentShareTx;
+    cache.nBlob=null;cache.mBlob=null;cache.nP=null;cache.mP=null;
+    cache.nP=renderBlob(false).then(function(b){cache.nBlob=b;return b;});
+    cache.mP=cache.nP.catch(function(){return null;}).then(function(){
+      if(cache.tx!==currentShareTx)return null;
+      return renderBlob(true).then(function(b){cache.mBlob=b;return b;});
+    });
+  }
+
+  /* ---------- efek loading di tombol ---------- */
+  function setLoading(btn,on){
+    if(!btn)return;
+    if(on){
+      if(!btn.dataset.orig)btn.dataset.orig=btn.innerHTML;
+      btn.disabled=true;
+      btn.innerHTML='<span class="cv-loading"></span> Proses\u2026';
+    }else{
+      btn.disabled=false;
+      if(btn.dataset.orig)btn.innerHTML=btn.dataset.orig;
+    }
+  }
 
   function fitInvoice(){
     var scroll=document.getElementById('invoiceShareScroll');
@@ -9961,70 +10015,70 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
     }
   }
 
-  function buildClean(withModal){
-    var tx=currentShareTx;if(!tx)return null;
-    var node;
-    if(withModal){window.__shareWithModal2=true;node=buildInvoiceDOM(tx);window.__shareWithModal2=false;}
-    else node=buildInvoiceDOM(tx);
-    node.style.transform='';
-    return node;
+  /* ---------- SHARE: selalu panggil popup share, NO download ---------- */
+  function doShare(blob,btn){
+    var tx=currentShareTx;
+    var fname=((tx&&tx.invNo)||'faktur').replace(/[^a-z0-9_-]/gi,'_')+'.png';
+    var file=null;
+    try{file=new File([blob],fname,{type:'image/png',lastModified:Date.now()});}catch(e){file=null;}
+    if(!file){ /* browser super tua: Blob + nama manual */
+      try{file=new Blob([blob],{type:'image/png'});file.name=fname;}catch(e){file=null;}
+    }
+    if(!file||typeof navigator.share!=='function'){
+      setLoading(btn,false);
+      alertWarning('Browser ini gak punya fitur share gambar.<br>Pakai tombol <b>Salin</b> lalu paste di WA.');
+      return;
+    }
+    /* LANGSUNG panggil share → popup sistem muncul (kaya screenshot) */
+    try{
+      navigator.share({files:[file]}).then(function(){
+        setLoading(btn,false);
+      }).catch(function(err){
+        setLoading(btn,false);
+        if(err&&err.name==='AbortError')return; /* user tutup sheet \u2192 diem */
+        /* share file ditolak browser → arahkan ke Salin, BUKAN download */
+        alertWarning('Browser ini gak dukung share gambar langsung.<br>Pakai tombol <b>Salin</b> lalu paste di chat WA.');
+      });
+    }catch(e){
+      setLoading(btn,false);
+      alertWarning('Browser ini gak dukung share gambar langsung.<br>Pakai tombol <b>Salin</b> lalu paste di chat WA.');
+    }
   }
 
-  function saveBlob(blob,fname){
-    var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');a.href=url;a.download=fname;
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    setTimeout(function(){URL.revokeObjectURL(url);},3000);
+  function shareNow(withModal,btn){
+    setLoading(btn,true); /* \u2190 loading langsung keliatan */
+    var blob=withModal?cache.mBlob:cache.nBlob;
+    if(blob){doShare(blob,btn);return;} /* instan, gesture valid \u2713 */
+    var p=(withModal?cache.mP:cache.nP)||renderBlob(withModal);
+    p.then(function(b){
+      if(!b){setLoading(btn,false);alertDanger('Gagal membuat gambar.');return;}
+      if(withModal)cache.mBlob=b;else cache.nBlob=b;
+      doShare(b,btn);
+    }).catch(function(e){setLoading(btn,false);alertDanger('Gagal membuat gambar: '+msg(e));});
   }
 
   /* ---------- SALIN ke clipboard ---------- */
-  function copyImage(){
-    var tx=currentShareTx;if(!tx)return;
-    if(typeof html2canvas!=='function')return alertDanger('html2canvas belum termuat.');
-    if(!navigator.clipboard||typeof ClipboardItem==='undefined')
-      return alertWarning('Browser ini belum dukung salin gambar.<br>Pakai tombol <b>WhatsApp</b>.');
-    var node=buildClean(false);if(!node)return;
-    var stage=getOffscreenStage();stage.innerHTML='';stage.appendChild(node);
-    html2canvas(node,{scale:2,backgroundColor:'#ffffff',useCORS:true,allowTaint:true,logging:false,windowWidth:1123}).then(function(canvas){
-      stage.innerHTML='';
-      var blobP=new Promise(function(res,rej){canvas.toBlob(function(b){b?res(b):rej(new Error('blob'));},'image/png',0.95);});
+  function copyNow(btn){
+    var blob=cache.nBlob;
+    var doIt=function(b){
+      if(!navigator.clipboard||typeof ClipboardItem==='undefined'){
+        alertWarning('Browser ini belum dukung salin gambar.<br>Pakai tombol <b>WhatsApp</b>.');
+        return;
+      }
       try{
-        navigator.clipboard.write([new ClipboardItem({'image/png':blobP})]).then(
+        navigator.clipboard.write([new ClipboardItem({'image/png':Promise.resolve(b)})]).then(
           function(){alertSuccess('Gambar faktur <b>disalin</b>! Tinggal paste di WA.');},
           function(){alertDanger('Gagal menyalin gambar.');}
         );
       }catch(e){alertDanger('Gagal menyalin gambar.');}
-    }).catch(function(e){stage.innerHTML='';alertDanger('Gagal: '+escapeHtml(e&&e.message?e.message:String(e)));});
-  }
-
-  /* ---------- SHARE GAMBAR DOANG (tanpa teks, tanpa download) ---------- */
-  function shareImageOnly(withModal){
-    var tx=currentShareTx;if(!tx)return;
-    if(typeof html2canvas!=='function')return alertDanger('html2canvas belum termuat.');
-    var node=buildClean(withModal);if(!node)return;
-    var stage=getOffscreenStage();stage.innerHTML='';stage.appendChild(node);
-    html2canvas(node,{scale:2.5,backgroundColor:'#ffffff',useCORS:true,allowTaint:true,logging:false,windowWidth:1123}).then(function(canvas){
-      canvas.toBlob(function(blob){
-        stage.innerHTML='';
-        if(!blob)return alertDanger('Gagal membuat gambar.');
-        var fname=(tx.invNo||'faktur').replace(/[^a-z0-9_-]/gi,'_')+'.png';
-        var file=null;
-        try{file=new File([blob],fname,{type:'image/png',lastModified:Date.now()});}catch(e){}
-        var canFile=false;
-        try{canFile=!!(navigator.canShare&&file&&navigator.canShare({files:[file]}));}catch(e){}
-        if(file&&canFile){
-          /* GAMBAR AJA — gak pakai text/title biar chat bersih */
-          navigator.share({files:[file]}).catch(function(err){
-            if(err&&err.name==='AbortError')return;   /* user batalin → diem aja */
-            alertDanger('Gagal share: '+escapeHtml(err&&err.message?err.message:String(err)));
-          });
-        }else{
-          /* browser jadul: satu-satunya jalan ya unduh manual */
-          saveBlob(blob,fname);
-          alertWarning('Browser ini gak dukung share gambar langsung.<br>Gambar diunduh — lampirkan manual di WA.');
-        }
-      },'image/png',0.95);
-    }).catch(function(e){stage.innerHTML='';alertDanger('Gagal: '+escapeHtml(e&&e.message?e.message:String(e)));});
+    };
+    if(blob){doIt(blob);return;}
+    setLoading(btn,true);
+    (cache.nP||renderBlob(false)).then(function(b){
+      setLoading(btn,false);
+      if(!b)return alertDanger('Gagal membuat gambar.');
+      cache.nBlob=b;doIt(b);
+    }).catch(function(e){setLoading(btn,false);alertDanger('Gagal membuat gambar: '+msg(e));});
   }
 
   /* ---------- popup preview + 3 tombol ---------- */
@@ -10039,10 +10093,11 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
       '<button class="btn-pro-fixed" id="v67Cp"><svg><use href="#icon-image"/></svg> Salin</button>'+
       '<button class="btn-pro-fixed" id="v67Wa" style="background:#25D366;color:#fff;border-color:#25D366"><svg style="stroke:#fff"><use href="#icon-phone"/></svg> WhatsApp</button>'+
       '<button class="btn-pro-fixed" id="v67Md" style="background:var(--pi);color:#fff;border-color:var(--pi)"><svg style="stroke:#fff"><use href="#icon-scissors"/></svg> +Modal</button>';
-    document.getElementById('v67Cp').onclick=copyImage;
-    document.getElementById('v67Wa').onclick=function(){shareImageOnly(false);};
-    document.getElementById('v67Md').onclick=function(){shareImageOnly(true);};
+    document.getElementById('v67Cp').onclick=function(){copyNow(this);};
+    document.getElementById('v67Wa').onclick=function(){shareNow(false,this);};
+    document.getElementById('v67Md').onclick=function(){shareNow(true,this);};
     modal.classList.add('open');
+    warmup(); /* pre-render mulai sekarang */
     setTimeout(fitInvoice,60);
     setTimeout(fitInvoice,350);
   }
@@ -10050,8 +10105,7 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
   function flowDraft(ev){
     if(currentMode==='order'){shareOrderToWA();return;}
     if(!currentCustomer)return alertWarning('Pilih customer dulu!');
-    var rows=collectValidRows();
-    if(!rows.length)return alertWarning('Isi barang dulu!');
+    if(!collectValidRows().length)return alertWarning('Isi barang dulu!');
     openShareModal(buildCurrentDraft());
   }
   function flowHist(gi){
@@ -10073,13 +10127,13 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
     var btns=document.querySelectorAll('.btn-share-sm');
     for(var i=0;i<btns.length;i++){
       var b=btns[i];
-      if(b.dataset.v67r4)continue;b.dataset.v67r4='1';
+      if(b.dataset.v67r6)continue;b.dataset.v67r6='1';
       b.removeAttribute('onclick');
       b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();flowDraft(e);},true);
     }
     var im=document.getElementById('invoiceShareModal');
-    if(im&&!im.dataset.v67r4){
-      im.dataset.v67r4='1';
+    if(im&&!im.dataset.v67r6){
+      im.dataset.v67r6='1';
       im.addEventListener('click',function(e){if(e.target===im)closeModal('invoiceShareModal');});
     }
   }
@@ -10093,7 +10147,7 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
     if(m&&m.classList.contains('open'))fitInvoice();
   });
 
-  try{console.log('[v67R4] share gambar doang aktif');}catch(e){}
+  try{console.log('[v67R6] popup share always + loading aktif');}catch(e){}
 })();
 </script>
 </body>
