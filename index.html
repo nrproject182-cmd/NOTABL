@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v5.7</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v5.8</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='5.7';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='5.8';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -2636,7 +2636,7 @@ document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){if
       };
     }
   })(WRAP[w])}
-  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v5.7'}catch(e){}
+  try{var st=document.querySelector('.sp-tag');if(st)st.textContent='Sistem Transaksi \u2022 v5.8'}catch(e){}
   try{var sl=document.querySelector('.sp-load');if(sl)sl.textContent='Memuat sistem\u2026'}catch(e){}
   try{repairAll(document.body)}catch(e){}
   setTimeout(function(){try{repairAll(document.body)}catch(e){}},200);
@@ -10148,6 +10148,418 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
   });
 
   try{console.log('[v67R6] popup share always + loading aktif');}catch(e){}
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH FINAL: PERBAIKAN DISKON CMM DI TRANSAKSI BARU
+   ========================================================== */
+(function() {
+  // Override getSpecialFromPopup - harus terima grandBeforeCMM
+  var origGetSpecial = window.getSpecialFromPopup;
+  window.getSpecialFromPopup = function(grandBeforeCMM) {
+    const t = document.getElementById('paySpecialType').value;
+    const v = parseDecField('paySpecialValue');
+    if (v <= 0) return 0;
+    // CMM dihitung dari grandBeforeCMM (sudah termasuk diskon kategori + ongkir)
+    return t === 'percent' ? grandBeforeCMM * Math.min(v, 100) / 100 : Math.min(v, grandBeforeCMM);
+  };
+
+  // Override recalcPayModal
+  var origRecalc = window.recalcPayModal;
+  window.recalcPayModal = function(setCashDefault) {
+    const sub = payRecSubVal;
+    const disc = payRecDiscVal;
+    const ongkir = payRecOngkirVal || 0;
+    
+    // Hitung grand BEFORE CMM
+    const barangTotal = Math.max(0, sub - disc);
+    const grandBeforeCMM = barangTotal + ongkir;
+    
+    // CMM dihitung dari grandBeforeCMM
+    const spec = getSpecialFromPopup(grandBeforeCMM);
+    
+    // Grand FINAL setelah CMM
+    const grandFinal = Math.max(0, grandBeforeCMM - spec);
+    
+    currentPayGrand = grandFinal;
+    
+    // Update UI
+    const sRow = document.getElementById('payRecSpecRow');
+    if (sRow) {
+      sRow.style.display = spec > 0 ? 'flex' : 'none';
+      const sv = document.getElementById('payRecSpec');
+      if (sv) sv.innerText = '- ' + fmtCurrencyFull(spec);
+    }
+    
+    const oRow = document.getElementById('payRecOngkirRow');
+    if (oRow) {
+      oRow.style.display = ongkir > 0 ? 'flex' : 'none';
+      const oV = document.getElementById('payRecOngkir');
+      if (oV) oV.innerText = fmtCurrencyFull(ongkir);
+    }
+    
+    const gEl = document.getElementById('payRecGrand');
+    if (gEl) gEl.innerText = fmtCurrencyFull(grandFinal);
+    
+    if (setCashDefault || !payCashUserEdited) {
+      setMoneyDec('payCash', grandFinal);
+    }
+    
+    updatePaySummaryLive(grandFinal);
+  };
+
+  // Override confirmPay
+  var origConfirm = window.confirmPay;
+  window.confirmPay = function() {
+    const cash = parseDecField('payCash');
+    const trf = parseDecField('payTransfer');
+    const paid = cash + trf;
+    if (paid <= 0) return alertWarning('Isi nominal pembayaran!');
+    if (paid > currentPayGrand + 1) return alertWarning('Pembayaran melebihi total!');
+    
+    const note = document.getElementById('payNote').value.trim();
+    
+    // Hitung ulang CMM yang benar (sama seperti di recalcPayModal)
+    const sub = payRecSubVal;
+    const disc = payRecDiscVal;
+    const ongkir = payRecOngkirVal || 0;
+    const barangTotal = Math.max(0, sub - disc);
+    const grandBeforeCMM = barangTotal + ongkir;
+    const spec = getSpecialFromPopup(grandBeforeCMM);
+    
+    const rows = collectValidRows();
+    const si = [];
+    rows.forEach(r => {
+      const item = findItemByDesc(r.desc);
+      if (item) {
+        const avail = stockData[item.name] || 0;
+        if (r.qty > avail) si.push('<b>' + escapeHtml(item.name) + '</b> (butuh ' + r.qty + ', stok ' + avail + ')');
+      }
+    });
+    
+    const pay = { cash, transfer: trf, bank: '', ref: '', note };
+    const go = () => {
+      closeModal('payModal');
+      window.doSaveTransaction(rows, pay, spec);
+    };
+    
+    if (si.length) {
+      showConfirm('Stok tidak cukup:<br>' + si.join('<br>') + '<br><br>Tetap lanjutkan?', p => { if (p) go(); });
+    } else {
+      go();
+    }
+  };
+
+  // Override doSaveTransaction
+  var origSave = window.doSaveTransaction;
+  window.doSaveTransaction = function(rows, payment, specialDisc) {
+    specialDisc = specialDisc || 0;
+    rows.sort((a, b) => (a.cat || '').localeCompare(b.cat || ''));
+    const invNo = consumeInvNo('nota');
+    if (!invNo) return invDupWarning();
+    
+    const subTotal = rows.reduce((s, r) => s + r.total, 0);
+    let discTotal = 0;
+    rows.forEach(r => {
+      const item = findItemByDesc(r.desc), cat = item ? item.cat : (r.cat || '');
+      if (item && currentCustomer.disc && currentCustomer.disc[cat]) {
+        discTotal += r.total * currentCustomer.disc[cat] / 100;
+      }
+    });
+    
+    const ongkir = (currentMode === 'nota' && !isPiMode) ? (parseDecField('inputOngkir') || 0) : 0;
+    const barangTotal = Math.max(0, subTotal - discTotal);
+    const grandBeforeCMM = barangTotal + ongkir;
+    const grandTotal = Math.max(0, grandBeforeCMM - specialDisc);
+    
+    const paid = payment ? (payment.cash + payment.transfer) : 0;
+    const isCash = payment ? payment.cash > 0 : false;
+    const isTransfer = payment ? payment.transfer > 0 : false;
+    let payNote = payment && payment.note ? payment.note : '';
+    const parts = [];
+    if (payment && payment.cash > 0) parts.push('Cash ' + fmtCurrency(payment.cash));
+    if (payment && payment.transfer > 0) parts.push('Transfer ' + fmtCurrency(payment.transfer));
+    if (!payNote && parts.length) payNote = parts.join(' + ');
+    if (specialDisc > 0) payNote += (payNote ? ' | ' : '') + 'CMM ' + fmtCurrency(specialDisc);
+    
+    const payments = (payment && paid > 0) ? [{ amount: paid, cash: payment.cash || 0, transfer: payment.transfer || 0, bank: '', ref: '', date: new Date().toISOString(), note: payNote, cmm: specialDisc || 0 }] : [];
+    
+    const tx = { invNo, date: new Date().toISOString(), cust: Object.assign({}, currentCustomer), rows, subTotal, discTotal, specialDiscAmount: specialDisc, ongkir: ongkir, grandTotal: barangTotal, finalGrandTotal: grandTotal, isCash, isTransfer, paidAmount: paid, payments, isOrder: false, isRetur: false, isPi: false, isCancelled: false, _source: 'manual' };
+    
+    const hist = JSON.parse(localStorage.getItem('txHistory')) || [];
+    hist.unshift(tx);
+    try { localStorage.setItem('txHistory', JSON.stringify(hist)); } catch (e) { alertDanger('Storage penuh! Gagal menyimpan.'); }
+    
+    rows.forEach(r => {
+      const item = findItemByDesc(r.desc);
+      if (item) {
+        if (stockData[item.name] === undefined) stockData[item.name] = 0;
+        stockData[item.name] -= r.qty;
+        stockLog.unshift({ item: item.name, type: 'out', qty: r.qty, note: 'Terjual: ' + invNo, date: new Date().toISOString() });
+      }
+    });
+    saveStockData();
+    syncToActiveLKReport('invoices', { id: tx.invNo, amount: grandTotal, desc: tx.invNo + ' - ' + (tx.cust ? tx.cust.name : ''), date: tx.date });
+    
+    let msg = 'Tersimpan! <b>' + tx.invNo + '</b>';
+    if (ongkir > 0) msg += '<br>Ongkir: <b>' + fmtCurrencyFull(ongkir) + '</b>';
+    if (paid > 0) {
+      const sisa = Math.max(0, grandTotal - paid);
+      msg += '<br>Dibayar: <b>' + fmtCurrencyFull(paid) + '</b>';
+      if (sisa <= 0) msg += '<br><b>LUNAS</b>';
+      else msg += '<br>Sisa: <b>' + fmtCurrencyFull(sisa) + '</b>';
+    } else {
+      msg += '<br>Belum dibayar';
+    }
+    alertSuccess(msg);
+    resetTransactionUI();
+  };
+
+  // Default history = reguler
+  try { window.invoiceTypeFilter = 'reguler'; } catch(e) {}
+  
+  if (typeof window.updateInvoiceTypeFilterMenu === 'function') {
+    window.updateInvoiceTypeFilterMenu();
+  }
+  
+  console.log('[PATCH FINAL] CMM dihitung dari GRAND BEFORE CMM (setelah diskon kategori + ongkir)');
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH FINAL FIX: PAKSA PERBAIKAN LOGIKA CMM
+   Taruh ini di paling bawah file
+   ========================================================== */
+(function() {
+  'use strict';
+  
+  // Tunggu sampai semua fungsi ready
+  function waitForFunction(fn, callback, maxAttempts = 50) {
+    var attempts = 0;
+    var interval = setInterval(function() {
+      if (typeof fn === 'function') {
+        clearInterval(interval);
+        callback();
+      } else if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        console.error('[CMM FIX] Function not found after', maxAttempts, 'attempts');
+      }
+      attempts++;
+    }, 100);
+  }
+
+  function applyFix() {
+    console.log('[CMM FIX] Applying fix...');
+    
+    // 1. Override getSpecialFromPopup
+    window.getSpecialFromPopup = function(grandBeforeCMM) {
+      const t = document.getElementById('paySpecialType') ? document.getElementById('paySpecialType').value : 'percent';
+      const v = typeof parseDecField === 'function' ? parseDecField('paySpecialValue') : 0;
+      if (v <= 0) return 0;
+      // CMM dihitung dari grandBeforeCMM (sudah termasuk diskon kategori + ongkir)
+      return t === 'percent' ? grandBeforeCMM * Math.min(v, 100) / 100 : Math.min(v, grandBeforeCMM);
+    };
+
+    // 2. Override recalcPayModal
+    window.recalcPayModal = function(setCashDefault) {
+      const sub = window.payRecSubVal || 0;
+      const disc = window.payRecDiscVal || 0;
+      const ongkir = window.payRecOngkirVal || 0;
+      
+      // Hitung grand BEFORE CMM
+      const barangTotal = Math.max(0, sub - disc);
+      const grandBeforeCMM = barangTotal + ongkir;
+      
+      // CMM dihitung dari grandBeforeCMM
+      const spec = window.getSpecialFromPopup(grandBeforeCMM);
+      
+      // Grand FINAL setelah CMM
+      const grandFinal = Math.max(0, grandBeforeCMM - spec);
+      
+      window.currentPayGrand = grandFinal;
+      
+      // Update UI
+      const sRow = document.getElementById('payRecSpecRow');
+      if (sRow) {
+        sRow.style.display = spec > 0 ? 'flex' : 'none';
+        const sv = document.getElementById('payRecSpec');
+        if (sv) sv.innerText = '- ' + (typeof fmtCurrencyFull === 'function' ? fmtCurrencyFull(spec) : spec);
+      }
+      
+      const oRow = document.getElementById('payRecOngkirRow');
+      if (oRow) {
+        oRow.style.display = ongkir > 0 ? 'flex' : 'none';
+        const oV = document.getElementById('payRecOngkir');
+        if (oV) oV.innerText = typeof fmtCurrencyFull === 'function' ? fmtCurrencyFull(ongkir) : ongkir;
+      }
+      
+      const gEl = document.getElementById('payRecGrand');
+      if (gEl) gEl.innerText = typeof fmtCurrencyFull === 'function' ? fmtCurrencyFull(grandFinal) : grandFinal;
+      
+      if (setCashDefault || !window.payCashUserEdited) {
+        if (typeof setMoneyDec === 'function') {
+          setMoneyDec('payCash', grandFinal);
+        }
+      }
+      
+      if (typeof updatePaySummaryLive === 'function') {
+        updatePaySummaryLive(grandFinal);
+      }
+      
+      console.log('[CMM FIX] Recalculated:', { sub, disc, ongkir, grandBeforeCMM, spec, grandFinal });
+    };
+
+    // 3. Override confirmPay
+    window.confirmPay = function() {
+      const cash = typeof parseDecField === 'function' ? parseDecField('payCash') : 0;
+      const trf = typeof parseDecField === 'function' ? parseDecField('payTransfer') : 0;
+      const paid = cash + trf;
+      if (paid <= 0) return typeof alertWarning === 'function' ? alertWarning('Isi nominal pembayaran!') : alert('Isi nominal pembayaran!');
+      if (paid > window.currentPayGrand + 1) return typeof alertWarning === 'function' ? alertWarning('Pembayaran melebihi total!') : alert('Pembayaran melebihi total!');
+      
+      const note = document.getElementById('payNote') ? document.getElementById('payNote').value.trim() : '';
+      
+      // Hitung ulang CMM yang benar
+      const sub = window.payRecSubVal || 0;
+      const disc = window.payRecDiscVal || 0;
+      const ongkir = window.payRecOngkirVal || 0;
+      const barangTotal = Math.max(0, sub - disc);
+      const grandBeforeCMM = barangTotal + ongkir;
+      const spec = window.getSpecialFromPopup(grandBeforeCMM);
+      
+      const rows = typeof collectValidRows === 'function' ? collectValidRows() : [];
+      const si = [];
+      rows.forEach(r => {
+        const item = typeof findItemByDesc === 'function' ? findItemByDesc(r.desc) : null;
+        if (item) {
+          const avail = (window.stockData && window.stockData[item.name]) || 0;
+          if (r.qty > avail) si.push('<b>' + (typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name) + '</b> (butuh ' + r.qty + ', stok ' + avail + ')');
+        }
+      });
+      
+      const pay = { cash, transfer: trf, bank: '', ref: '', note };
+      const go = () => {
+        if (typeof closeModal === 'function') closeModal('payModal');
+        if (typeof window.doSaveTransaction === 'function') {
+          window.doSaveTransaction(rows, pay, spec);
+        }
+      };
+      
+      if (si.length) {
+        if (typeof showConfirm === 'function') {
+          showConfirm('Stok tidak cukup:<br>' + si.join('<br>') + '<br><br>Tetap lanjutkan?', function(p) { if (p) go(); });
+        } else {
+          if (confirm('Stok tidak cukup. Tetap lanjutkan?')) go();
+        }
+      } else {
+        go();
+      }
+    };
+
+    // 4. Override doSaveTransaction
+    window.doSaveTransaction = function(rows, payment, specialDisc) {
+      specialDisc = specialDisc || 0;
+      if (rows && rows.sort) rows.sort((a, b) => (a.cat || '').localeCompare(b.cat || ''));
+      const invNo = typeof consumeInvNo === 'function' ? consumeInvNo('nota') : null;
+      if (!invNo) {
+        if (typeof invDupWarning === 'function') invDupWarning();
+        return;
+      }
+      
+      const subTotal = rows.reduce((s, r) => s + (r.total || 0), 0);
+      let discTotal = 0;
+      rows.forEach(r => {
+        const item = typeof findItemByDesc === 'function' ? findItemByDesc(r.desc) : null;
+        const cat = item ? item.cat : (r.cat || '');
+        if (item && window.currentCustomer && window.currentCustomer.disc && window.currentCustomer.disc[cat]) {
+          discTotal += (r.total || 0) * window.currentCustomer.disc[cat] / 100;
+        }
+      });
+      
+      const ongkir = (window.currentMode === 'nota' && !window.isPiMode) ? (typeof parseDecField === 'function' ? parseDecField('inputOngkir') || 0 : 0) : 0;
+      const barangTotal = Math.max(0, subTotal - discTotal);
+      const grandBeforeCMM = barangTotal + ongkir;
+      const grandTotal = Math.max(0, grandBeforeCMM - specialDisc);
+      
+      const paid = payment ? ((payment.cash || 0) + (payment.transfer || 0)) : 0;
+      const isCash = payment ? payment.cash > 0 : false;
+      const isTransfer = payment ? payment.transfer > 0 : false;
+      let payNote = payment && payment.note ? payment.note : '';
+      const parts = [];
+      if (payment && payment.cash > 0) parts.push('Cash ' + (typeof fmtCurrency === 'function' ? fmtCurrency(payment.cash) : payment.cash));
+      if (payment && payment.transfer > 0) parts.push('Transfer ' + (typeof fmtCurrency === 'function' ? fmtCurrency(payment.transfer) : payment.transfer));
+      if (!payNote && parts.length) payNote = parts.join(' + ');
+      if (specialDisc > 0) payNote += (payNote ? ' | ' : '') + 'CMM ' + (typeof fmtCurrency === 'function' ? fmtCurrency(specialDisc) : specialDisc);
+      
+      const payments = (payment && paid > 0) ? [{ amount: paid, cash: payment.cash || 0, transfer: payment.transfer || 0, bank: '', ref: '', date: new Date().toISOString(), note: payNote, cmm: specialDisc || 0 }] : [];
+      
+      const tx = { invNo, date: new Date().toISOString(), cust: Object.assign({}, window.currentCustomer || {}), rows, subTotal, discTotal, specialDiscAmount: specialDisc, ongkir: ongkir, grandTotal: barangTotal, finalGrandTotal: grandTotal, isCash, isTransfer, paidAmount: paid, payments, isOrder: false, isRetur: false, isPi: false, isCancelled: false, _source: 'manual' };
+      
+      let hist = [];
+      try { hist = JSON.parse(localStorage.getItem('txHistory')) || []; } catch(e) {}
+      hist.unshift(tx);
+      try { localStorage.setItem('txHistory', JSON.stringify(hist)); } catch (e) { if (typeof alertDanger === 'function') alertDanger('Storage penuh! Gagal menyimpan.'); }
+      
+      if (rows) rows.forEach(r => {
+        const item = typeof findItemByDesc === 'function' ? findItemByDesc(r.desc) : null;
+        if (item) {
+          if (!window.stockData) window.stockData = {};
+          if (window.stockData[item.name] === undefined) window.stockData[item.name] = 0;
+          window.stockData[item.name] -= r.qty;
+          if (window.stockLog) {
+            window.stockLog.unshift({ item: item.name, type: 'out', qty: r.qty, note: 'Terjual: ' + invNo, date: new Date().toISOString() });
+          }
+        }
+      });
+      if (typeof saveStockData === 'function') saveStockData();
+      if (typeof syncToActiveLKReport === 'function') syncToActiveLKReport('invoices', { id: tx.invNo, amount: grandTotal, desc: tx.invNo + ' - ' + (tx.cust ? tx.cust.name : ''), date: tx.date });
+      
+      let msg = 'Tersimpan! <b>' + invNo + '</b>';
+      if (ongkir > 0) msg += '<br>Ongkir: <b>' + (typeof fmtCurrencyFull === 'function' ? fmtCurrencyFull(ongkir) : ongkir) + '</b>';
+      if (paid > 0) {
+        const sisa = Math.max(0, grandTotal - paid);
+        msg += '<br>Dibayar: <b>' + (typeof fmtCurrencyFull === 'function' ? fmtCurrencyFull(paid) : paid) + '</b>';
+        if (sisa <= 0) msg += '<br><b>LUNAS</b>';
+        else msg += '<br>Sisa: <b>' + (typeof fmtCurrencyFull === 'function' ? fmtCurrencyFull(sisa) : sisa) + '</b>';
+      } else {
+        msg += '<br>Belum dibayar';
+      }
+      if (typeof alertSuccess === 'function') alertSuccess(msg);
+      if (typeof resetTransactionUI === 'function') resetTransactionUI();
+    };
+
+    console.log('[CMM FIX] Functions overridden successfully!');
+    
+    // Test dengan console log
+    window.testCMMCalculation = function() {
+      const sub = 416904;
+      const disc = 83380.80;
+      const ongkir = 0;
+      const barangTotal = sub - disc; // 333523.20
+      const grandBeforeCMM = barangTotal + ongkir; // 333523.20
+      const cmmPercent = 5;
+      const cmm = grandBeforeCMM * cmmPercent / 100; // 16676.16
+      const grandFinal = grandBeforeCMM - cmm; // 316847.04
+      
+      console.log('[CMM TEST] Expected:', { barangTotal, grandBeforeCMM, cmm, grandFinal });
+      console.log('Expected Grand Final: Rp 316.847,04');
+    };
+  }
+
+  // Apply setelah semua fungsi ready
+  waitForFunction(function() { return typeof window.openPayPopup === 'function'; }, applyFix);
+  
+  // Juga apply setelah DOM load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(applyFix, 500);
+    });
+  } else {
+    setTimeout(applyFix, 500);
+  }
+  
+  console.log('[CMM FIX] Script loaded. Waiting for functions...');
 })();
 </script>
 </body>
