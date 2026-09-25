@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v6.1</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v6.2</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='6.1';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='6.2';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -8377,26 +8377,56 @@ body.order-mode #page-input .order-no-input{
 </script>
 <script>
 /* ==========================================================
-   PATCH v96R5: FIX LANJUTAN NOMOR NOTA MANUAL
-   - Simpan pakai nomor manual N => counter = N, preview N+1
-     (berlaku walau N lebih kecil dari counter lama)
-   - Ketikan nomor tidak lagi dimakan oleh refreshNum /
-     visibilitychange (setInvNumPreview di-hardened)
-   - Mode edit nota (v38B) tetap aman, counter tidak gerak
-   Style: 1 baris per fungsi. Tempel setelah v96R4 (atau
-   salin isinya ke dalam blok v96R4 sebelum bagian BOOT).
+   PATCH v96R6 (FINAL - ganti v96R4+v96R5, satu blok):
+   1) Filter CASH/TRANSFER pelunasan SELF-HEALING (re-wrap saat
+      kartu diklik & saat tab pelunasan dibuka; flag __v78 biar
+      applyAll v78 tidak menimpa)
+   2) SETOR KE BCA = selisih baris yang TERLIHAT (DOM-sum)
+   3) KAS Rincian LK dikunci (hanya dari Kas Awal saat buat rute)
+   4) Nomor nota manual lanjut N+1 setelah save
+   5) Baris transaksi FIX 10 untuk mode Faktur/Retur/PI
+      (Order tetap bebas; data lama >10 baris tetap aman)
+   Style: 1 baris per fungsi.
    ========================================================== */
 (function(){
   'use strict';
-  if(window.__v96R5) return; window.__v96R5=true;
+  if(window.__v96R6) return; window.__v96R6=true;
+
+  /* ===== 1) FILTER PELUNASAN SELF-HEALING ===== */
+  function syncCards(){var f=window.__settleMethodFilter||'',c=document.getElementById('settleCardCash'),t=document.getElementById('settleCardTrf');if(c)c.classList.toggle('sel',f==='cash');if(t)t.classList.toggle('sel',f==='transfer');if(typeof window.computeSettlements!=='function')return;var all=window.computeSettlements(),cA=0,cC=0,tA=0,tC=0;all.forEach(function(s){if(s.cash>0){cA+=s.cash;cC++;}if(s.transfer>0){tA+=s.transfer;tC++;}});var e;e=document.getElementById('settleCashAmt');if(e)e.textContent=fmtCurrency(cA);e=document.getElementById('settleCashCnt');if(e)e.textContent=cC+' trx';e=document.getElementById('settleTrfAmt');if(e)e.textContent=fmtCurrency(tA);e=document.getElementById('settleTrfCnt');if(e)e.textContent=tC+' trx';}
+  function fixSettle(){try{document.querySelectorAll('#settlementList .settle-lk-chip').forEach(function(x){x.style.display='none';});}catch(e){}syncCards();}
+  function ensure(){if(typeof window.renderSettlementList!=='function'){setTimeout(ensure,150);return;}if(!window.renderSettlementList.__v96){var oR=window.renderSettlementList;var wrapped=function(){var origCS=window.computeSettlements,flt=window.__settleMethodFilter||'';if(flt){window.computeSettlements=function(){return origCS().filter(function(s){return flt==='cash'?(s.cash>0):(s.transfer>0);});};}var r;try{r=oR.apply(this,arguments);}finally{window.computeSettlements=origCS;}setTimeout(fixSettle,0);return r;};wrapped.__v96=true;window.renderSettlementList=wrapped;}window.renderSettlementList.__v78=true;}
+  function wireCards(){var c=document.getElementById('settleCardCash'),t=document.getElementById('settleCardTrf');if(!c||!t){setTimeout(wireCards,200);return;}if(c.__v96wired)return;c.__v96wired=true;t.__v96wired=true;c.onclick=function(){ensure();window.__settleMethodFilter=(window.__settleMethodFilter==='cash')?'':'cash';window.renderSettlementList();syncCards();};t.onclick=function(){ensure();window.__settleMethodFilter=(window.__settleMethodFilter==='transfer')?'':'transfer';window.renderSettlementList();syncCards();};}
+  function hookReportTab(){if(typeof window.openReportTab!=='function'){setTimeout(hookReportTab,150);return;}if(window.openReportTab.__v96s)return;var o=window.openReportTab;window.openReportTab=function(tab){var r=o.apply(this,arguments);if(tab==='settlement'){ensure();setTimeout(syncCards,60);}return r;};window.openReportTab.__v96s=true;}
+  function installSettle(){ensure();wireCards();hookReportTab();syncCards();}
+
+  /* ===== 2) SETOR KE BCA = SUM BARIS TERLIHAT ===== */
+  function sumSection(sec){var t=0;sec.querySelectorAll('.lk-auto-v,.lk-me-amt').forEach(function(el){var v=parseMoney(el.textContent);if(v>0)t+=v;});return t;}
+  function recalcDOM(id){var si=document.getElementById('lkSec_in'),so=document.getElementById('lkSec_out');if(!si||!so)return;var mi=sumSection(si),mo=sumSection(so);var e;e=document.getElementById('lkSubMasuk');if(e)e.innerText=fmtCurrency(mi);e=document.getElementById('lkSubKeluar');if(e)e.innerText=fmtCurrency(mo);e=document.getElementById('lkGrandEl');if(e)e.innerText=fmtCurrency(mi-mo);}
+  function ensureRecalc(){if(typeof window.recalcLKDetail!=='function'){setTimeout(ensureRecalc,150);return;}if(window.recalcLKDetail.__v96r)return;var o=window.recalcLKDetail;window.recalcLKDetail=function(id){try{o.apply(this,arguments);}catch(e){}setTimeout(function(){recalcDOM(id);},90);setTimeout(function(){recalcDOM(id);},380);setTimeout(function(){recalcDOM(id);},520);};window.recalcLKDetail.__v96r=true;}
+
+  /* ===== 3) KUNCI KAS LK ===== */
+  function findLK(id){for(var i=0;i<lkReports.length;i++){if(lkReports[i].id===id)return lkReports[i];}return null;}
+  function sumKasLegacy(r){return (r&&r.manualEntries&&r.manualEntries.kas)?r.manualEntries.kas.reduce(function(s,e){return s+(parseFloat(e.amt)||0);},0):0;}
+  function kasRow(ic,label,val,color){return '<div class="lk-auto-row"><span class="lk-auto-l" style="color:'+color+'"><svg class="ei"><use href="#'+ic+'"/></svg> '+label+'</span><span class="lk-auto-v" style="color:'+color+'">'+fmtCurrency(val)+'</span></div>';}
+  function lockKasUI(id){var r=findLK(id);if(!r)return;var sec=document.getElementById('lkSec_in');if(!sec)return;sec.querySelectorAll('.lk-me-block').forEach(function(b){var l=b.querySelector('.lk-me-label');if(l&&/uang kas|kas awal|kas dibawa/i.test(l.textContent||''))b.remove();});var hasRow=Array.prototype.some.call(sec.querySelectorAll('.lk-auto-row'),function(row){var l=row.querySelector('.lk-auto-l');return l&&/kas awal|kas dibawa/i.test(l.textContent||'');});var old=document.getElementById('v96KasLock');if(old)old.remove();if(!hasRow){var leg=sumKasLegacy(r);var html='<div id="v96KasLock">'+kasRow('icon-wallet','Kas Awal (dikunci \u2022 set saat buat rute)',parseFloat(r.initialCash)||0,'var(--cash)')+(leg>0?kasRow('icon-lock','Kas manual (entri lama \u2022 read-only)',leg,'var(--warning)'):'')+'</div>';var sub=sec.querySelector('.lk-subtotal');if(sub)sub.insertAdjacentHTML('beforebegin',html);else sec.insertAdjacentHTML('beforeend',html);}recalcDOM(id);}
+  function lockKasFn(){if(typeof window.addLkEntry!=='function'){setTimeout(lockKasFn,150);return;}if(window.addLkEntry.__v96k)return;var o=window.addLkEntry;window.addLkEntry=function(id,key){if(key==='kas'){alertWarning('Kas hanya bisa diisi saat membuat rute/periode Luar Kota.');return;}return o.apply(this,arguments);};window.addLkEntry.__v96k=true;}
+  function hookLKDetail(){if(typeof window.viewLKReportDetail!=='function'){setTimeout(hookLKDetail,150);return;}if(window.viewLKReportDetail.__v96k)return;var o=window.viewLKReportDetail;window.viewLKReportDetail=function(id){var r=o.apply(this,arguments);setTimeout(function(){lockKasUI(id);},120);setTimeout(function(){lockKasUI(id);},360);setTimeout(function(){recalcDOM(id);},420);return r;};window.viewLKReportDetail.__v96k=true;}
+  function installKas(){lockKasFn();hookLKDetail();ensureRecalc();}
+
+  /* ===== 4) NOMOR NOTA MANUAL LANJUT N+1 ===== */
   function ownConsume(mode){var m=mode||(isPiMode?'pi':currentMode),ct=getCounterTypeForMode(m),c=getInvCounter(ct),inp=document.getElementById('invNumInput'),requested=null;if(manualInvMode&&manualInvNumber)requested=manualInvNumber;else if(invUserEdited)requested=(inp?inp.value:'').trim();var full,usedNum=null;if(requested!==null&&requested!==''){var isNum=/^\d+$/.test(requested);var fs=isNum?padInvNum(Math.max(1,Math.min(999999,parseInt(requested,10)))):requested;full=getPrefixForMode(m)+fs;if(isInvNoExists(full))return null;usedNum=isNum?parseInt(requested,10):null;}else{var nn=(c.lastNum||0)+1;while(isInvNoExists(getPrefixForMode(m)+padInvNum(nn)))nn++;full=getPrefixForMode(m)+padInvNum(nn);usedNum=nn;}if(usedNum!==null){c.lastNum=usedNum;saveInvCounter(ct,c);}manualInvMode=false;manualInvNumber='';try{localStorage.setItem('manualInvMode','false');localStorage.removeItem('manualInvNumber');}catch(e){}if(inp){inp.classList.remove('manual-mode');inp.placeholder='';inp.value=padInvNum((c.lastNum||0)+1);}invUserEdited=false;return full;}
   function installInv(){if(typeof window.consumeInvNo!=='function'){setTimeout(installInv,150);return;}if(window.consumeInvNo.__v96n)return;window.consumeInvNo=function(mode){if(window.__editKeepInvNo){var v=window.__editKeepInvNo;window.__editKeepInvNo=null;return v;}return ownConsume(mode);};window.consumeInvNo.__v96n=true;}
-  function hardenPreview(){if(typeof window.setInvNumPreview!=='function'){setTimeout(hardenPreview,150);return;}if(window.setInvNumPreview.__v96p)return;var o=window.setInvNumPreview;window.setInvNumPreview=function(){var keep=(invUserEdited||manualInvMode),inp=document.getElementById('invNumInput'),v=inp?inp.value:'';var r=o.apply(this,arguments);if(keep&&inp){inp.value=v;invUserEdited=true;}return r;};window.setInvNumPreview.__v96p=true;}
-  function install(){installInv();hardenPreview();}
+
+  /* ===== 5) FIX 10 BARIS (nota/retur/PI) ===== */
+  function installRowCap(){if(typeof window.addNewRowDOM!=='function'){setTimeout(installRowCap,150);return;}if(window.addNewRowDOM.__v96c)return;var oA=window.addNewRowDOM;window.addNewRowDOM=function(){if(!window.__rowCapBypass&&window.currentMode!=='order'&&document.querySelectorAll('#inputRows tr').length>=10){if(!window.__rowCapWarned){window.__rowCapWarned=true;alertWarning('Maksimal 10 baris per nota (format Accurate).');}return undefined;}return oA.apply(this,arguments);};window.addNewRowDOM.__v96c=true;if(typeof window.renderRowsToDOM==='function'&&!window.renderRowsToDOM.__v96c){var oR=window.renderRowsToDOM;window.renderRowsToDOM=function(){window.__rowCapBypass=true;try{return oR.apply(this,arguments);}finally{window.__rowCapBypass=false;}};window.renderRowsToDOM.__v96c=true;}}
+
+  /* ===== BOOT ===== */
+  function install(){installSettle();installKas();installInv();installRowCap();}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
-  window.addEventListener('load',function(){setTimeout(install,50);setTimeout(install,400);});
-  setTimeout(install,350);setTimeout(install,1200);setTimeout(install,3000);
-  console.log('[v96R5] fix lanjutan nomor nota manual aktif');
+  window.addEventListener('load',function(){setTimeout(install,50);setTimeout(install,400);setTimeout(install,900);});
+  setTimeout(install,350);setTimeout(install,800);setTimeout(install,1600);setTimeout(install,3000);setTimeout(install,5000);
+  console.log('[v96R6] filter self-healing + SETOR fix + kunci kas + nota N+1 + fix 10 baris aktif');
 })();
 </script>
 </body>
