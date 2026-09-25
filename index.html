@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v6.0</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v6.1</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='6.0';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='6.1';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -6119,7 +6119,7 @@ function fH(){
   window.cvRender=function(res){var r=oR.apply(this,arguments);setTimeout(updatePanel,0);return r;};
 }
 
-fB();fC();fD();fE();fF();fG();fH();
+fB();fC();fD();fH();
 try{console.log('[v45 FINAL] aktif');}catch(e){}
 })();
 </script>
@@ -8137,6 +8137,266 @@ body.order-mode #page-input .order-no-input{
   setTimeout(install,300);
   setTimeout(install,1200);
   console.log('[v94R4] leburan + 7 fix aktif');
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v95: PENGEMBALIAN ONGKIR OTOMATIS (LAPORAN LK)
+   1) Baris "Pengembalian Ongkir" di tab PENERIMAAN = OTOMATIS
+      (input manual disembunyikan; entri manual LAMA tetap dihitung)
+   2) Dibelah dua menurut metode terima:
+      - TUNAI    -> tab PENERIMAAN (ikut SUBTOTAL & SETOR KE BCA)
+      - TRANSFER -> tab DATA (informasi, tidak ikut setor)
+   3) Sinkron dgn nota ber-ONGKIR: saat nota dibayar (Bayar transaksi /
+      Bayar riwayat / Multi-pay) muncul popup "Pengembalian Ongkir"
+      -> TERIMA SEKARANG (split sesuai komposisi cash/transfer pembayaran)
+      -> NANTI (status PENDING, muncul di tab DATA + detail nota)
+   4) Pending bisa diterima kapan saja dari detail nota
+      (tombol Terima Tunai / Terima Transfer)
+   PASANG PALING BAWAH (setelah patch v87 & v94)
+   ========================================================== */
+(function(){
+  'use strict';
+  if(window.__v95) return; window.__v95=true;
+
+  function loadHist(){ try{return JSON.parse(localStorage.getItem('txHistory')||'[]');}catch(e){return [];} }
+  function saveHist(ha){ try{localStorage.setItem('txHistory',JSON.stringify(ha));}catch(e){alertDanger('Storage penuh!');} }
+  function round2(n){ return Math.round((parseFloat(n)||0)*100)/100; }
+  function lastPay(tx){ var p=tx&&tx.payments; return (p&&p.length)?p[p.length-1]:null; }
+  function row95(icon,label,val,color){
+    return '<div class="lk-auto-row"><span class="lk-auto-l"><svg class="ei"><use href="#'+icon+'"/></svg> '+label+'</span>'+
+           '<span class="lk-auto-v" style="color:'+color+'">'+fmtCurrency(val)+'</span></div>';
+  }
+
+  /* ---------- STATS per periode laporan ---------- */
+  function ongkirStats(r){
+    var ha=loadHist();
+    var dep=new Date(r.departDate); dep.setHours(0,0,0,0);
+    var ret=new Date(r.returnDate); ret.setHours(23,59,59,999);
+    function inP(d){ var x=new Date(d); return x>=dep&&x<=ret; }
+    var cash=0,trf=0,pend=0,tot=0;
+    ha.forEach(function(tx){
+      if(!tx||tx.isCancelled) return;
+      var ong=getOngkir(tx);
+      if(ong>0&&tx.date&&inP(tx.date)) tot+=ong;
+      var ref=tx.ongkirRefund;
+      if(ref&&ref.status==='received'){
+        if(ref.date&&inP(ref.date)){ cash+=(ref.cash||0); trf+=(ref.transfer||0); }
+      }else if(ref&&ref.status==='pending'){
+        if(tx.date&&inP(tx.date)) pend+=ong;
+      }
+    });
+    return {cash:cash,trf:trf,pend:pend,tot:tot,legacy:sumLk(r,'pengembalianOngkir')};
+  }
+
+  /* ---------- computeLKAuto: tambah field ongkir ---------- */
+  function hookAuto(){
+    if(window.computeLKAuto.__v95) return;
+    var o=window.computeLKAuto;
+    window.computeLKAuto=function(r){
+      var res=o.apply(this,arguments);
+      var s=ongkirStats(r);
+      res.ongkirRefundCash=s.cash; res.ongkirRefundTrf=s.trf; res.ongkirRefundPending=s.pend;
+      return res;
+    };
+    window.computeLKAuto.__v95=true;
+  }
+
+  /* ---------- recalc: TUNAI ikut SUBTOTAL PENERIMAAN ---------- */
+  function hookRecalc(){
+    window.recalcLKDetail=function(id){
+      var r=null; for(var i=0;i<lkReports.length;i++){ if(lkReports[i].id===id){r=lkReports[i];break;} }
+      if(!r) return;
+      var auto=r._auto||computeLKAuto(r);
+      var kasAwal=parseFloat(r.initialCash)||0;
+      var masuk=kasAwal+sumLk(r,'kas')+(auto.totalCashJkt||0)+sumLk(r,'pengembalianOngkir')+(auto.ongkirRefundCash||0);
+      var keluar=sumLk(r,'makan')+sumLk(r,'parkir')+sumLk(r,'bensin')+sumLk(r,'laundry')+(auto.cmmTotal||0);
+      var grand=masuk-keluar;
+      function set(elId,val){ var e=document.getElementById(elId); if(e)e.innerText=fmtCurrency(val); }
+      set('lkSubMasuk',masuk); set('lkSubKeluar',keluar); set('lkGrandEl',grand);
+    };
+  }
+
+  /* ---------- popup saat nota ber-ongkir dibayar ---------- */
+  function refreshViews(gi){
+    try{
+      if(document.getElementById('lkDetailView').style.display==='flex'&&window.currentLKDetailId)
+        viewLKReportDetail(window.currentLKDetailId);
+      if(gi!=null&&document.getElementById('historyDetailView').style.display==='block'&&window.currentDetailIdx===gi)
+        renderHistoryDetail(gi);
+    }catch(e){}
+  }
+  function promptRefund(tx,pay){
+    var ong=getOngkir(tx);
+    if(!(ong>0)) return;
+    var ref=tx.ongkirRefund;
+    if(ref&&ref.status==='received') return;
+    var paid=(pay.cash||0)+(pay.transfer||0);
+    if(paid<=0) return;
+    var rc=round2(ong*((pay.cash||0)/paid)), rt=round2(ong-rc);
+    var meth=(rc>0&&rt>0)?('Cash '+fmtCurrency(rc)+' • Transfer '+fmtCurrency(rt)):(rc>0?'TUNAI':'TRANSFER');
+    var btnTxt=(rc>0&&rt>0)?'✅ Terima Sekarang':(rc>0?'💵 Terima Sekarang (Tunai)':'🏦 Terima Sekarang (Transfer)');
+    enqueuePopup({type:'question',title:'Pengembalian Ongkir',
+      message:'<b>'+escapeHtml(tx.invNo)+'</b> • '+escapeHtml(tx.cust?tx.cust.name:'-')+
+        '<br>Ongkir nota: <b>'+fmtCurrencyFull(ong)+'</b>'+
+        '<br>Pembayaran ini: Cash '+fmtCurrency(pay.cash||0)+' • Transfer '+fmtCurrency(pay.transfer||0)+
+        '<br><small>Jika diterima sekarang: bagian <b>TUNAI</b> masuk tab Penerimaan, <b>TRANSFER</b> masuk tab Data (Laporan LK).</small>',
+      buttons:[{text:btnTxt,cls:'primary',action:'now'},{text:'⏰ Nanti',cls:'secondary',action:'later'}],
+      callback:function(a){
+        if(a!=='now'&&a!=='later') return;
+        var ha=loadHist(), gi=-1;
+        for(var i=0;i<ha.length;i++){ if(ha[i].invNo===tx.invNo){gi=i;break;} }
+        if(gi<0) return;
+        if(a==='now'){
+          ha[gi].ongkirRefund={amount:ong,cash:rc,transfer:rt,status:'received',date:new Date().toISOString()};
+          alertSuccess('Pengembalian ongkir <b>'+fmtCurrencyFull(ong)+'</b> dicatat.<br>'+escapeHtml(meth));
+        }else{
+          ha[gi].ongkirRefund={amount:ong,cash:0,transfer:0,status:'pending',date:new Date().toISOString()};
+          alertSuccess('Ditandai <b>NANTI / PENDING</b>.<br>Bisa diterima dari detail nota atau saat pembayaran berikutnya.');
+        }
+        saveHist(ha);
+        refreshViews(gi);
+      }});
+  }
+  function hookPayFns(){
+    function wrap(name){
+      var o=window[name]; if(!o||o.__v95) return;
+      window[name]=function(){
+        var before=(loadHist()[0]||{}).invNo;
+        var r=o.apply(this,arguments);
+        setTimeout(function(){ try{
+          var ha=loadHist(), targets=[];
+          if(name==='confirmPay'){ if(ha[0]&&ha[0].invNo!==before) targets.push({tx:ha[0],pay:lastPay(ha[0])}); }
+          else if(name==='confirmHistPay'){ var t=ha[window.histPayIdx]; if(t) targets.push({tx:t,pay:lastPay(t)}); }
+          else if(name==='confirmMultiPay'){ (window.multiPaySel||[]).forEach(function(s){ var t2=ha[s.gi]; if(t2) targets.push({tx:t2,pay:lastPay(t2)}); }); }
+          targets.forEach(function(x){ if(x.tx&&x.pay) promptRefund(x.tx,x.pay); });
+        }catch(e){} },80);
+        return r;
+      };
+      window[name].__v95=true;
+    }
+    wrap('confirmPay'); wrap('confirmHistPay'); wrap('confirmMultiPay');
+  }
+
+  /* ---------- terima pending dari detail nota ---------- */
+  window.v95Receive=function(gi,meth){
+    var ha=loadHist(), tx=ha[gi];
+    if(!tx) return;
+    var ong=getOngkir(tx);
+    if(!(ong>0)) return alertWarning('Nota ini tidak punya ongkir.');
+    tx.ongkirRefund={amount:ong,cash:(meth==='cash'?ong:0),transfer:(meth==='trf'?ong:0),status:'received',date:new Date().toISOString()};
+    ha[gi]=tx; saveHist(ha);
+    alertSuccess('Pengembalian ongkir <b>'+fmtCurrencyFull(ong)+'</b> diterima.<br>'+(meth==='cash'?'💵 TUNAI → masuk Penerimaan':'🏦 TRANSFER → masuk Data'));
+    renderHistoryDetail(gi);
+    refreshViews(gi);
+  };
+  function hookDetail(){
+    if(window.renderHistoryDetail.__v95) return;
+    var o=window.renderHistoryDetail;
+    window.renderHistoryDetail=function(gi){
+      var r=o.apply(this,arguments);
+      setTimeout(function(){ try{
+        var ha=loadHist(), tx=ha[gi]; if(!tx) return;
+        var ong=getOngkir(tx); if(!(ong>0)) return;
+        var grp=document.querySelector('#invoiceDetailContent .ro-sum-pay'); if(!grp) return;
+        var o1=document.getElementById('v95OngkirRow'); if(o1)o1.remove();
+        var o2=document.getElementById('v95OngkirActs'); if(o2)o2.remove();
+        var ref=tx.ongkirRefund, html='';
+        if(ref&&ref.status==='received'){
+          html='<div class="ro-srow" id="v95OngkirRow"><span class="ro-srow-label" style="color:var(--cash)"><svg class="ei"><use href="#icon-truck"/></svg> Pengembalian Ongkir</span>'+
+               '<span class="ro-srow-value" style="color:var(--cash)">'+((ref.cash>0)?'Tunai '+fmtCurrency(ref.cash):'')+((ref.cash>0&&ref.transfer>0)?' • ':'')+((ref.transfer>0)?'Trf '+fmtCurrency(ref.transfer):'')+'</span></div>';
+        }else{
+          if(!(tx.payments&&tx.payments.length)) return; /* belum ada pembayaran -> popup muncul saat bayar */
+          html='<div class="ro-srow" id="v95OngkirRow"><span class="ro-srow-label" style="color:var(--warning)"><svg class="ei"><use href="#icon-truck"/></svg> Pengembalian Ongkir</span>'+
+               '<span class="ro-srow-value" style="color:var(--warning)">'+fmtCurrency(ong)+' (PENDING)</span></div>'+
+               '<div id="v95OngkirActs" style="display:flex;gap:6px;justify-content:flex-end;margin:2px 0 6px">'+
+               '<button class="inv-act-btn" onclick="v95Receive('+gi+',\'cash\')"><svg><use href="#icon-wallet"/></svg> Terima Tunai</button>'+
+               '<button class="inv-act-btn" onclick="v95Receive('+gi+',\'trf\')"><svg><use href="#icon-bank"/></svg> Terima Transfer</button></div>';
+        }
+        var stt=grp.querySelector('.ro-status-line');
+        if(stt) stt.insertAdjacentHTML('beforebegin',html); else grp.insertAdjacentHTML('beforeend',html);
+      }catch(e){} },70);
+      return r;
+    };
+    window.renderHistoryDetail.__v95=true;
+  }
+
+  /* ---------- bedah DOM halaman LK (auto rows + hapus input manual) ---------- */
+  function surgery(id){
+    var r=null; for(var i=0;i<lkReports.length;i++){ if(lkReports[i].id===id){r=lkReports[i];break;} }
+    if(!r) return;
+    var st=ongkirStats(r);
+    var inSec=document.getElementById('lkSec_in');
+    if(inSec){
+      var blocks=inSec.querySelectorAll('.lk-me-block');
+      for(var b=0;b<blocks.length;b++){
+        var l=blocks[b].querySelector('.lk-me-label');
+        if(l&&/PENGEMBALIAN ONGKIR/i.test(l.textContent||'')) blocks[b].remove();
+      }
+      var old=document.getElementById('v95OngkirIn'); if(old) old.remove();
+      var html='<div id="v95OngkirIn">'+row95('icon-truck','Pengembalian Ongkir TUNAI (auto)',st.cash,'var(--cash)')+
+               (st.legacy>0?row95('icon-truck','Pengembalian Ongkir (manual lama)',st.legacy,'var(--cash)'):'')+'</div>';
+      var sub=inSec.querySelector('.lk-subtotal');
+      if(sub) sub.insertAdjacentHTML('beforebegin',html); else inSec.insertAdjacentHTML('beforeend',html);
+    }
+    var stSec=document.getElementById('lkSec_stat');
+    if(stSec){
+      var oldS=document.getElementById('v95OngkirStat'); if(oldS) oldS.remove();
+      stSec.insertAdjacentHTML('beforeend',
+        '<div id="v95OngkirStat" style="margin-top:10px">'+
+        '<div style="font-size:8px;font-weight:700;color:var(--text-light);text-transform:uppercase;margin:2px 0 6px;letter-spacing:.5px">Pengembalian Ongkir (auto)</div>'+
+        row95('icon-truck','Total ongkir nota periode ini',st.tot,'var(--text)')+
+        row95('icon-wallet','Diterima TUNAI (→ Penerimaan)',st.cash,'var(--cash)')+
+        row95('icon-bank','Diterima TRANSFER (info)',st.trf,'var(--transfer)')+
+        row95('icon-clock','PENDING / belum diterima',st.pend,'var(--warning)')+'</div>');
+    }
+    if(window.recalcLKDetail) recalcLKDetail(id);
+  }
+  function hookLKView(){
+    if(window.viewLKReportDetail.__v95) return;
+    var o=window.viewLKReportDetail;
+    window.viewLKReportDetail=function(id){
+      var r=o.apply(this,arguments);
+      setTimeout(function(){ try{surgery(id);}catch(e){} },90);
+      setTimeout(function(){ try{surgery(id);}catch(e){} },320);
+      return r;
+    };
+    window.viewLKReportDetail.__v95=true;
+  }
+
+  function install(){
+    if(typeof window.computeLKAuto!=='function'||typeof window.viewLKReportDetail!=='function'||
+       typeof window.confirmPay!=='function'||typeof window.renderHistoryDetail!=='function'){
+      setTimeout(install,150); return;
+    }
+    hookAuto(); hookRecalc(); hookPayFns(); hookDetail(); hookLKView();
+    console.log('[v95] pengembalian ongkir otomatis aktif');
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',install); else install();
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v96R5: FIX LANJUTAN NOMOR NOTA MANUAL
+   - Simpan pakai nomor manual N => counter = N, preview N+1
+     (berlaku walau N lebih kecil dari counter lama)
+   - Ketikan nomor tidak lagi dimakan oleh refreshNum /
+     visibilitychange (setInvNumPreview di-hardened)
+   - Mode edit nota (v38B) tetap aman, counter tidak gerak
+   Style: 1 baris per fungsi. Tempel setelah v96R4 (atau
+   salin isinya ke dalam blok v96R4 sebelum bagian BOOT).
+   ========================================================== */
+(function(){
+  'use strict';
+  if(window.__v96R5) return; window.__v96R5=true;
+  function ownConsume(mode){var m=mode||(isPiMode?'pi':currentMode),ct=getCounterTypeForMode(m),c=getInvCounter(ct),inp=document.getElementById('invNumInput'),requested=null;if(manualInvMode&&manualInvNumber)requested=manualInvNumber;else if(invUserEdited)requested=(inp?inp.value:'').trim();var full,usedNum=null;if(requested!==null&&requested!==''){var isNum=/^\d+$/.test(requested);var fs=isNum?padInvNum(Math.max(1,Math.min(999999,parseInt(requested,10)))):requested;full=getPrefixForMode(m)+fs;if(isInvNoExists(full))return null;usedNum=isNum?parseInt(requested,10):null;}else{var nn=(c.lastNum||0)+1;while(isInvNoExists(getPrefixForMode(m)+padInvNum(nn)))nn++;full=getPrefixForMode(m)+padInvNum(nn);usedNum=nn;}if(usedNum!==null){c.lastNum=usedNum;saveInvCounter(ct,c);}manualInvMode=false;manualInvNumber='';try{localStorage.setItem('manualInvMode','false');localStorage.removeItem('manualInvNumber');}catch(e){}if(inp){inp.classList.remove('manual-mode');inp.placeholder='';inp.value=padInvNum((c.lastNum||0)+1);}invUserEdited=false;return full;}
+  function installInv(){if(typeof window.consumeInvNo!=='function'){setTimeout(installInv,150);return;}if(window.consumeInvNo.__v96n)return;window.consumeInvNo=function(mode){if(window.__editKeepInvNo){var v=window.__editKeepInvNo;window.__editKeepInvNo=null;return v;}return ownConsume(mode);};window.consumeInvNo.__v96n=true;}
+  function hardenPreview(){if(typeof window.setInvNumPreview!=='function'){setTimeout(hardenPreview,150);return;}if(window.setInvNumPreview.__v96p)return;var o=window.setInvNumPreview;window.setInvNumPreview=function(){var keep=(invUserEdited||manualInvMode),inp=document.getElementById('invNumInput'),v=inp?inp.value:'';var r=o.apply(this,arguments);if(keep&&inp){inp.value=v;invUserEdited=true;}return r;};window.setInvNumPreview.__v96p=true;}
+  function install(){installInv();hardenPreview();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
+  window.addEventListener('load',function(){setTimeout(install,50);setTimeout(install,400);});
+  setTimeout(install,350);setTimeout(install,1200);setTimeout(install,3000);
+  console.log('[v96R5] fix lanjutan nomor nota manual aktif');
 })();
 </script>
 </body>
