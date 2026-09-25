@@ -1223,7 +1223,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v5.9</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v6.0</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2519,7 +2519,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='5.9';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='6.0';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -7730,9 +7730,11 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
 </script>
 <script>
 /* ==========================================================
-   PATCH v87 (ganti v86):
-   1) Tombol Tanggal → tombol biru "Laporan ▾" (switch halaman)
-   2) Dropdown periode + opsi "Edit Periode Ini"
+   PATCH v87 R2 (REVISI v87): ROMBAK LAPORAN LK
+   1) Penerimaan: cash dipecah → Bawaan / Penjualan / Tagihan JKT
+   2) Transfer semua masuk "Total Pembayaran via Transfer" (Data)
+   3) Data: tampil total Bawaan LK Otomotif + Pertanian (+jumlah nota)
+   4) Tetap: header rapi, dropdown periode, tab, toggle SETOR, kas awal
    ========================================================== */
 (function(){
   'use strict';
@@ -7741,6 +7743,9 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
   function curId(){return window.currentLKDetailId;}
   function pickDefault(){var r=lkReports.find(function(x){return x.id===window.activeLKReportId&&x.isActive;});return r?r.id:(lkReports[0]?lkReports[0].id:null);}
   function cnt(r){return r.syncedData?(r.syncedData.invoices.length+r.syncedData.payments.length+r.syncedData.stock.length):0;}
+  function autoRowHtml(l,v){return '<div class="lk-auto-row"><span class="lk-auto-l"><svg class="ei"><use href="#icon-check-circle"/></svg> '+l+'</span><span class="lk-auto-v">'+fmtCurrency(v)+'</span></div>';}
+  function lblOf(row){var e=row.querySelector('.lk-auto-l');return e?(e.textContent||''):'';}
+  function breakdown(r){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var dep=new Date(r.departDate);dep.setHours(0,0,0,0);var ret=new Date(r.returnDate);ret.setHours(23,59,59,999);var inP=function(d){var x=new Date(d);return x>=dep&&x<=ret;};var cb=0,cr=0,cj=0,tr=0;ha.forEach(function(tx){if(!tx||tx.isCancelled)return;var lk=tx.region==='LKOTM'||tx.region==='LKPRT';var jkt=!lk&&isImportedTx(tx)&&tx.region!=='BDG';(tx.payments||[]).forEach(function(p){if(!inP(p.date))return;var c=payCashOf(p),t=payTransferOf(p);if(lk)cb+=c;else if(jkt)cj+=c;else cr+=c;tr+=t;});});return {cb:cb,cr:cr,cj:cj,tr:tr};}
   function css(){if(document.getElementById('v87-css'))return;var s=document.createElement('style');s.id='v87-css';s.textContent=
     'body.lk-open #page-history>.pro-header{display:none}'+
     'body.lk-open #page-history .page-content{padding-left:0!important;padding-right:0!important;padding-top:0!important}'+
@@ -7800,167 +7805,17 @@ try{console.log('[v45 FINAL] aktif');}catch(e){}
   window.lkMenuGo=function(id){var m=document.getElementById('lkSwitchMenu');if(m)m.classList.remove('open');viewLKReportDetail(id);};
   window.lkMenuAct=function(act){var m=document.getElementById('lkSwitchMenu');if(m)m.classList.remove('open');if(act==='new')openNewLKReportModal();else if(act==='del')deleteLKReport(curId());else if(act==='edit')editLKDates(curId());};
   window.lkToggleReport=function(){var m=document.getElementById('lkReportMenu');if(m)m.classList.toggle('open');};
-  function buildMenu(){var m=document.getElementById('lkSwitchMenu');if(!m)return;
-    var h='<div class="tm-label">Periode Tersimpan</div>';
-    lkReports.forEach(function(r){h+='<div class="dropdown-item'+(r.id===curId()?' active':'')+'" onclick="lkMenuGo(\''+r.id+'\')"><svg><use href="#icon-plane"/></svg> <span class="lk-menu-item">'+escapeHtml(r.destination)+'<small>'+fDS(r.departDate)+' - '+fDS(r.returnDate)+' \u2022 '+cnt(r)+' data</small></span>'+(r.isActive?'<span style="margin-left:auto;font-size:7px;font-weight:800;background:var(--success);color:#fff;padding:1px 6px;border-radius:8px">AKTIF</span>':'')+'</div>';});
-    h+='<div class="tm-divider"></div>';
-    h+='<div class="dropdown-item" onclick="lkMenuAct(\'edit\')"><svg><use href="#icon-edit"/></svg> Edit Periode Ini</div>';
-    h+='<div class="dropdown-item" onclick="lkMenuAct(\'new\')"><svg><use href="#icon-plus"/></svg> Tambah Periode Baru</div>';
-    h+='<div class="dropdown-item danger" onclick="lkMenuAct(\'del\')"><svg><use href="#icon-trash"/></svg> Hapus Periode Ini</div>';
-    m.innerHTML=h;}
-  function injectSwitcher(){
-    var head=document.querySelector('#lkDetailView .pro-header');if(!head)return;
-    var r=lkReports.find(function(x){return x.id===curId();});if(!r)return;
-    var h2=head.querySelector('.pro-header-title h2');
-    var sub=document.getElementById('lkDetailSubtitle');
-    var ic=head.querySelector('.pro-header-icon');
-    if(ic&&!ic.dataset.v87){ic.dataset.v87='1';ic.innerHTML='<svg><use href="#icon-plane"/></svg>';}
-    if(h2)h2.textContent=r.destination;
-    if(sub){if(!document.getElementById('lkSwitchBtn'))sub.innerHTML='<span class="lk-switch-wrap filter-dropdown-wrap"><button type="button" class="lk-period-btn" id="lkSwitchBtn">'+fDS(r.departDate)+' - '+fDS(r.returnDate)+' \u2022 '+cnt(r)+' data <svg class="caret"><use href="#icon-chevron-down"/></svg></button><div id="lkSwitchMenu" class="filter-dropdown-menu" style="left:0;right:auto"></div></span>';
-      else{var b0=document.getElementById('lkSwitchBtn');if(b0)b0.innerHTML=fDS(r.departDate)+' - '+fDS(r.returnDate)+' \u2022 '+cnt(r)+' data <svg class="caret"><use href="#icon-chevron-down"/></svg>';}}
-    var b=document.getElementById('lkSwitchBtn');
-    if(b)b.onclick=function(ev){ev.stopPropagation();window.lkToggleMenu();};
-    var acts=head.querySelector('.pro-header-actions');
-    if(acts){
-      ['lkHdrNew','lkHdrImport'].forEach(function(id){var ob=document.getElementById(id);if(ob)ob.remove();});
-      Array.prototype.forEach.call(acts.querySelectorAll('button'),function(bt){var oc=bt.getAttribute('onclick')||'';if(oc.indexOf('closeLKDetail')>=0||oc.indexOf('openLKImportModal')>=0||oc.indexOf('openNewLKReportModal')>=0||oc.indexOf('editLKDates')>=0)bt.remove();});
-      if(!document.getElementById('lkReportBtn')){
-        var wrap=document.createElement('span');wrap.className='report-menu-wrap';
-        wrap.innerHTML='<button type="button" class="btn-pro-fixed primary report-menu-btn" id="lkReportBtn" onclick="lkToggleReport()"><svg><use href="#icon-chart"/></svg> Laporan <svg class="caret" style="stroke:#fff;opacity:.9"><use href="#icon-chevron-down"/></svg></button>'+
-        '<div id="lkReportMenu" class="report-dropdown">'+
-        '<div class="dropdown-item" onclick="openReportTab(\'finance\')"><span class="rd-icon"><svg><use href="#icon-dollar"/></svg></span> Laporan Keuangan</div>'+
-        '<div class="dropdown-item" onclick="openReportTab(\'lk\')"><span class="rd-icon"><svg><use href="#icon-plane"/></svg></span> Laporan Luar Kota</div>'+
-        '<div class="dropdown-item" onclick="openReportTab(\'settlement\')"><span class="rd-icon"><svg><use href="#icon-check-circle"/></svg></span> Laporan Pelunasan</div>'+
-        '<div class="dropdown-item" onclick="openReportTab(\'daily\')"><span class="rd-icon"><svg><use href="#icon-calendar"/></svg></span> Laporan Harian</div>'+
-        '</div>';
-        acts.appendChild(wrap);}
-    }
-    if(!window.__v87close){window.__v87close=true;
-      document.addEventListener('click',function(e){if(e.target.closest&&!e.target.closest('.lk-switch-wrap')){var mm=document.getElementById('lkSwitchMenu');if(mm)mm.classList.remove('open');}},true);}
-  }
+  function buildMenu(){var m=document.getElementById('lkSwitchMenu');if(!m)return;var h='<div class="tm-label">Periode Tersimpan</div>';lkReports.forEach(function(r){h+='<div class="dropdown-item'+(r.id===curId()?' active':'')+'" onclick="lkMenuGo(\''+r.id+'\')"><svg><use href="#icon-plane"/></svg> <span class="lk-menu-item">'+escapeHtml(r.destination)+'<small>'+fDS(r.departDate)+' - '+fDS(r.returnDate)+' \u2022 '+cnt(r)+' data</small></span>'+(r.isActive?'<span style="margin-left:auto;font-size:7px;font-weight:800;background:var(--success);color:#fff;padding:1px 6px;border-radius:8px">AKTIF</span>':'')+'</div>';});h+='<div class="tm-divider"></div>';h+='<div class="dropdown-item" onclick="lkMenuAct(\'edit\')"><svg><use href="#icon-edit"/></svg> Edit Periode Ini</div>';h+='<div class="dropdown-item" onclick="lkMenuAct(\'new\')"><svg><use href="#icon-plus"/></svg> Tambah Periode Baru</div>';h+='<div class="dropdown-item danger" onclick="lkMenuAct(\'del\')"><svg><use href="#icon-trash"/></svg> Hapus Periode Ini</div>';m.innerHTML=h;}
+  function injectSwitcher(){var head=document.querySelector('#lkDetailView .pro-header');if(!head)return;var r=lkReports.find(function(x){return x.id===curId();});if(!r)return;var h2=head.querySelector('.pro-header-title h2'),sub=document.getElementById('lkDetailSubtitle'),ic=head.querySelector('.pro-header-icon');if(ic&&!ic.dataset.v87){ic.dataset.v87='1';ic.innerHTML='<svg><use href="#icon-plane"/></svg>';}if(h2)h2.textContent=r.destination;if(sub){if(!document.getElementById('lkSwitchBtn'))sub.innerHTML='<span class="lk-switch-wrap filter-dropdown-wrap"><button type="button" class="lk-period-btn" id="lkSwitchBtn">'+fDS(r.departDate)+' - '+fDS(r.returnDate)+' \u2022 '+cnt(r)+' data <svg class="caret"><use href="#icon-chevron-down"/></svg></button><div id="lkSwitchMenu" class="filter-dropdown-menu" style="left:0;right:auto"></div></span>';else{var b0=document.getElementById('lkSwitchBtn');if(b0)b0.innerHTML=fDS(r.departDate)+' - '+fDS(r.returnDate)+' \u2022 '+cnt(r)+' data <svg class="caret"><use href="#icon-chevron-down"/></svg>';}}var b=document.getElementById('lkSwitchBtn');if(b)b.onclick=function(ev){ev.stopPropagation();window.lkToggleMenu();};var acts=head.querySelector('.pro-header-actions');if(acts){['lkHdrNew','lkHdrImport'].forEach(function(id){var ob=document.getElementById(id);if(ob)ob.remove();});Array.prototype.forEach.call(acts.querySelectorAll('button'),function(bt){var oc=bt.getAttribute('onclick')||'';if(oc.indexOf('closeLKDetail')>=0||oc.indexOf('openLKImportModal')>=0||oc.indexOf('openNewLKReportModal')>=0||oc.indexOf('editLKDates')>=0)bt.remove();});if(!document.getElementById('lkReportBtn')){var wrap=document.createElement('span');wrap.className='report-menu-wrap';wrap.innerHTML='<button type="button" class="btn-pro-fixed primary report-menu-btn" id="lkReportBtn" onclick="lkToggleReport()"><svg><use href="#icon-chart"/></svg> Laporan <svg class="caret" style="stroke:#fff;opacity:.9"><use href="#icon-chevron-down"/></svg></button><div id="lkReportMenu" class="report-dropdown"><div class="dropdown-item" onclick="openReportTab(\'finance\')"><span class="rd-icon"><svg><use href="#icon-dollar"/></svg></span> Laporan Keuangan</div><div class="dropdown-item" onclick="openReportTab(\'lk\')"><span class="rd-icon"><svg><use href="#icon-plane"/></svg></span> Laporan Luar Kota</div><div class="dropdown-item" onclick="openReportTab(\'settlement\')"><span class="rd-icon"><svg><use href="#icon-check-circle"/></svg></span> Laporan Pelunasan</div><div class="dropdown-item" onclick="openReportTab(\'daily\')"><span class="rd-icon"><svg><use href="#icon-calendar"/></svg></span> Laporan Harian</div></div>';acts.appendChild(wrap);}}if(!window.__v87close){window.__v87close=true;document.addEventListener('click',function(e){if(e.target.closest&&!e.target.closest('.lk-switch-wrap')){var mm=document.getElementById('lkSwitchMenu');if(mm)mm.classList.remove('open');}},true);}}
   function styleCmm(){var b=document.querySelectorAll('#lkDetailContent .lk-me-block');Array.prototype.forEach.call(b,function(bl){var l=bl.querySelector('.lk-me-label');if(l&&/CMM/i.test(l.textContent||''))bl.classList.add('lk-cmm-card');});}
-  function setLkTab(tab){
-    window.__lkTab=tab;
-    var map={in:'lkSec_in',out:'lkSec_out',stat:'lkSec_stat'};
-    for(var k in map){var el=document.getElementById(map[k]);if(el)el.classList.toggle('active',k===tab);}
-    var bars=document.querySelectorAll('#lkTabBar .qs-tab');
-    Array.prototype.forEach.call(bars,function(b){b.classList.toggle('active',b.getAttribute('data-lktab')===tab);});
-  }
-  function injectKasAwal(r){
-    var bIn=document.getElementById('lkSec_in');if(!bIn)return;
-    var old=document.getElementById('lkKasAwalRow');if(old)old.remove();
-    var kas=parseFloat(r.initialCash)||0;
-    if(kas>0)bIn.insertAdjacentHTML('afterbegin','<div class="lk-auto-row" id="lkKasAwalRow" style="border-bottom:1px dashed var(--border)"><span class="lk-auto-l"><svg class="ei"><use href="#icon-wallet"/></svg> Kas Awal Dibawa</span><span class="lk-auto-v">'+fmtCurrency(kas)+'</span></div>');
-  }
-  function hookRecalc(){
-    if(window.recalcLKDetail.__v87)return;
-    window.recalcLKDetail=function(id){
-      var r=lkReports.find(function(x){return x.id===id;});if(!r)return;
-      var auto=r._auto||computeLKAuto(r);
-      var kasAwal=parseFloat(r.initialCash)||0;
-      var masuk=kasAwal+sumLk(r,'kas')+auto.totalCashJkt+sumLk(r,'pengembalianOngkir');
-      var keluar=sumLk(r,'makan')+sumLk(r,'parkir')+sumLk(r,'bensin')+sumLk(r,'laundry')+auto.cmmTotal;
-      var grand=masuk-keluar;
-      var set=function(elId,val){var e=document.getElementById(elId);if(e)e.innerText=fmtCurrency(val);};
-      set('lkSubMasuk',masuk);set('lkSubKeluar',keluar);set('lkGrandEl',grand);
-    };
-    window.recalcLKDetail.__v87=true;
-  }
-  function paginateLK(){
-    var content=document.getElementById('lkDetailContent');if(!content)return;
-    var bIn=document.getElementById('lkSec_in'),bOut=document.getElementById('lkSec_out'),bStat=document.getElementById('lkSec_stat');
-    if(!bIn||!bOut||!bStat||document.getElementById('lkTabBar'))return;
-    var hIn=document.getElementById('lkSecHead_in');if(!hIn||!hIn.parentNode)return;
-    var r=lkReports.find(function(x){return x.id===curId();});
-    var statsGrid=content.querySelector('div[style*="repeat(3,1fr)"]');
-    var subIn=bIn.querySelector('.lk-subtotal'),subOut=bOut.querySelector('.lk-subtotal');
-    var grand=content.querySelector('.lk-grand');
-    if(grand&&!grand.querySelector('.lk-g-caret')){grand.id='lkGrandBar';grand.insertAdjacentHTML('beforeend','<svg class="ei lk-g-caret"><use href="#icon-chevron-down"/></svg>');
-      grand.onclick=function(){var det=document.getElementById('lkSumDetail');if(!det)return;det.classList.toggle('open');grand.classList.toggle('open');window.__lkSumOpen=det.classList.contains('open');};}
-    var det=document.createElement('div');det.id='lkSumDetail';
-    if(statsGrid){statsGrid.style.marginBottom='0';det.appendChild(statsGrid);}
-    var subRow=document.createElement('div');subRow.id='lkSubRow';
-    if(subIn)subRow.appendChild(subIn);
-    if(subOut)subRow.appendChild(subOut);
-    det.appendChild(subRow);
-    if(window.__lkSumOpen){det.classList.add('open');if(grand)grand.classList.add('open');}
-    var bar=document.createElement('div');
-    bar.innerHTML='<div class="qs-tabs" id="lkTabBar"><button type="button" class="qs-tab" data-lktab="in"><span class="qs-icon"><svg><use href="#icon-in"/></svg></span><span class="qs-label">Penerimaan</span></button><button type="button" class="qs-tab" data-lktab="out"><span class="qs-icon"><svg><use href="#icon-out"/></svg></span><span class="qs-label">Biaya</span></button><button type="button" class="qs-tab" data-lktab="stat"><span class="qs-icon"><svg><use href="#icon-chart"/></svg></span><span class="qs-label">Data</span></button></div>';
-    var tabEl=bar.firstChild;
-    hIn.parentNode.insertBefore(grand,hIn);
-    hIn.parentNode.insertBefore(det,hIn);
-    hIn.parentNode.insertBefore(tabEl,hIn);
-    [bIn,bOut,bStat].forEach(function(b){b.classList.add('lk-page');});
-    setLkTab(window.__lkTab||'in');
-    if(r)injectKasAwal(r);
-    styleCmm();
-    if(!window.__lkTabBind){window.__lkTabBind=true;
-      document.addEventListener('click',function(e){var t=e.target.closest?e.target.closest('#lkTabBar .qs-tab'):null;if(!t)return;setLkTab(t.getAttribute('data-lktab'));},true);}
-  }
-  function emptyState(){
-    var tab=document.getElementById('rptTabLK');if(!tab)return;
-    var ban=document.getElementById('lkActiveReportBanner');if(ban)ban.style.display='none';
-    Array.prototype.forEach.call(tab.querySelectorAll('.report-section-title'),function(t){t.style.display='none';});
-    var hl=document.getElementById('lkHistoryList');if(hl)hl.style.display='none';
-    Array.prototype.forEach.call(tab.querySelectorAll('.lk-section'),function(s){s.style.display='none';});
-    var ib=tab.querySelector('.btn-add-lk[onclick*="openLKImportModal"]');if(ib)ib.style.display='none';
-    if(!document.getElementById('lkEmptyCard')){
-      var d=document.createElement('div');d.id='lkEmptyCard';d.className='lk-empty';
-      d.innerHTML='<svg class="ei"><use href="#icon-plane"/></svg><div><b style="color:var(--primary)">Belum ada laporan luar kota.</b><br><small>Tombol Buat Baru di bawah untuk memulai.</small></div>';
-      var bb=tab.querySelector('.btn-add-lk');var row=bb?bb.parentElement:null;
-      if(row)tab.insertBefore(d,row);}
-  }
-  function memoLK(){
-    if(typeof window.computeLKAuto!=='function'||window.computeLKAuto.__m)return;
-    var o=window.computeLKAuto,cache={};
-    window.computeLKAuto=function(r){
-      var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');
-      var h0=ha[0]||{};
-      var key=r.id+'|'+ha.length+'|'+(h0.invNo||'')+'|'+(h0.paidAmount||0);
-      if(cache[key])return cache[key];
-      var res=o(r);cache[key]=res;return res;
-    };
-    window.computeLKAuto.__m=true;
-  }
-  function install(){
-    if(typeof window.openReportTab!=='function'||typeof window.viewLKReportDetail!=='function'){setTimeout(install,150);return;}
-    if(window.openReportTab.__v87)return;
-    css();memoLK();hookRecalc();
-    var oRT=window.openReportTab;
-    window.openReportTab=function(tab){var r=oRT.apply(this,arguments);if(tab==='lk'){if(lkReports.length)viewLKReportDetail(pickDefault());else emptyState();}else{document.body.classList.remove('lk-open');}return r;};
-    window.openReportTab.__v87=true;
-    var oV=window.viewLKReportDetail;
-    window.viewLKReportDetail=function(id){
-      document.body.classList.add('lk-open');
-      var lv=document.getElementById('lkDetailView');if(lv)lv.style.display='flex';
-      var c=document.getElementById('lkDetailContent');
-      if(c)c.innerHTML='<div style="padding:50px 20px;text-align:center;color:var(--text-light);font-size:11px;display:flex;flex-direction:column;align-items:center;gap:10px"><span class="cv-loading" style="border-color:var(--accent);border-top-color:transparent;width:22px;height:22px"></span> Memuat laporan\u2026</div>';
-      var args=arguments,self=this;
-      var run=function(){oV.apply(self,args);setTimeout(function(){injectSwitcher();paginateLK();hookRecalc();if(window.recalcLKDetail)recalcLKDetail(id);},40);};
-      if(window.requestIdleCallback)requestIdleCallback(run,{timeout:350});else setTimeout(run,30);
-      return;
-    };
-    var oCL=window.closeLKDetail;
-    window.closeLKDetail=function(){document.body.classList.remove('lk-open');return oCL.apply(this,arguments);};
-    var oC=window.createNewLKReport;
-    if(typeof oC==='function'&&!oC.__v87){window.createNewLKReport=function(){var r=oC.apply(this,arguments);if(window.activeLKReportId)viewLKReportDetail(window.activeLKReportId);return r;};oC.__v87=true;}
-    if(!window.deleteLKReport.__v87){
-      window.deleteLKReport=function(id){
-        showDangerConfirm('Hapus laporan ini?',function(cf){
-          if(!cf)return;
-          lkReports=lkReports.filter(function(r){return r.id!==id;});
-          if(window.activeLKReportId===id){window.activeLKReportId=null;try{localStorage.removeItem('activeLKReportId');}catch(e){}if(typeof clearLKSyncUI==='function')clearLKSyncUI();}
-          try{localStorage.setItem('lkReports',JSON.stringify(lkReports));}catch(e){alertDanger('Storage penuh!');}
-          if(typeof renderLKHistory==='function')renderLKHistory();
-          alertSuccess('Laporan dihapus!');
-          if(!lkReports.length){closeLKDetail();openReportTab('lk');}
-          else if(!lkReports.find(function(x){return x.id===window.currentLKDetailId;})){viewLKReportDetail(pickDefault());}
-        });
-      };
-      window.deleteLKReport.__v87=true;
-    }
-    console.log('[v87] tombol Laporan + edit periode');
-  }
+  function setLkTab(tab){window.__lkTab=tab;var map={in:'lkSec_in',out:'lkSec_out',stat:'lkSec_stat'};for(var k in map){var el=document.getElementById(map[k]);if(el)el.classList.toggle('active',k===tab);}var bars=document.querySelectorAll('#lkTabBar .qs-tab');Array.prototype.forEach.call(bars,function(b){b.classList.toggle('active',b.getAttribute('data-lktab')===tab);});}
+  function injectKasAwal(r){var bIn=document.getElementById('lkSec_in');if(!bIn)return;var old=document.getElementById('lkKasAwalRow');if(old)old.remove();var kas=parseFloat(r.initialCash)||0;if(kas>0)bIn.insertAdjacentHTML('afterbegin','<div class="lk-auto-row" id="lkKasAwalRow" style="border-bottom:1px dashed var(--border)"><span class="lk-auto-l"><svg class="ei"><use href="#icon-wallet"/></svg> Kas Awal Dibawa</span><span class="lk-auto-v">'+fmtCurrency(kas)+'</span></div>');}
+  function relabelLK(r){var a=r._auto||{};var inSec=document.getElementById('lkSec_in');if(inSec){Array.prototype.forEach.call(inSec.querySelectorAll('.lk-auto-row'),function(row){if(lblOf(row).indexOf('Pembayaran Cash')>=0)row.outerHTML=autoRowHtml('Bawaan Cash (LK OTM + PRT)',a.cashBawaan||0)+autoRowHtml('Penjualan Cash (Reguler/BDG)',a.cashReguler||0)+autoRowHtml('Faktur Tagihan Cash (JKT)',a.cashJKT||0);});}var st=document.getElementById('lkSec_stat');if(st&&!st.querySelector('.v87-bawaan')){var trRow=null;Array.prototype.forEach.call(st.querySelectorAll('.lk-auto-row'),function(row){if(lblOf(row).indexOf('Total Pembayaran via Transfer')>=0)trRow=row;});var bl=a.bawaanLK||{},bc=a.bawaanLKCnt||{};var html='<div class="v87-bawaan" style="font-size:8px;font-weight:700;color:var(--text-light);text-transform:uppercase;margin:12px 0 6px;letter-spacing:.5px">Bawaan Luar Kota (Total)</div>'+autoRowHtml('Bawaan LK Otomotif'+(bc.OTM?' ('+bc.OTM+' nota)':''),bl.OTM||0)+autoRowHtml('Bawaan LK Pertanian'+(bc.PRT?' ('+bc.PRT+' nota)':''),bl.PRT||0);if(trRow)trRow.insertAdjacentHTML('afterend',html);else st.insertAdjacentHTML('beforeend',html);}}
+  function hookRecalc(){if(window.recalcLKDetail.__v87)return;window.recalcLKDetail=function(id){var r=lkReports.find(function(x){return x.id===id;});if(!r)return;var auto=r._auto||computeLKAuto(r);var kasAwal=parseFloat(r.initialCash)||0;var masuk=kasAwal+sumLk(r,'kas')+auto.totalCashJkt+sumLk(r,'pengembalianOngkir');var keluar=sumLk(r,'makan')+sumLk(r,'parkir')+sumLk(r,'bensin')+sumLk(r,'laundry')+auto.cmmTotal;var grand=masuk-keluar;var set=function(elId,val){var e=document.getElementById(elId);if(e)e.innerText=fmtCurrency(val);};set('lkSubMasuk',masuk);set('lkSubKeluar',keluar);set('lkGrandEl',grand);};window.recalcLKDetail.__v87=true;}
+  function memoLK(){if(typeof window.computeLKAuto!=='function'||window.computeLKAuto.__m)return;var o=window.computeLKAuto,cache={};window.computeLKAuto=function(r){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var h0=ha[0]||{};var key=r.id+'|'+ha.length+'|'+(h0.invNo||'')+'|'+(h0.paidAmount||0);var res;if(cache[key])res=cache[key];else{res=o(r);var b=breakdown(r);res.cashBawaan=b.cb;res.cashReguler=b.cr;res.cashJKT=b.cj;res.totalCashJkt=b.cb+b.cr+b.cj;res.totalTransfer=b.tr;cache[key]=res;}return res;};window.computeLKAuto.__m=true;}
+  function paginateLK(){var content=document.getElementById('lkDetailContent');if(!content)return;var bIn=document.getElementById('lkSec_in'),bOut=document.getElementById('lkSec_out'),bStat=document.getElementById('lkSec_stat');if(!bIn||!bOut||!bStat||document.getElementById('lkTabBar'))return;var hIn=document.getElementById('lkSecHead_in');if(!hIn||!hIn.parentNode)return;var r=lkReports.find(function(x){return x.id===curId();});var statsGrid=content.querySelector('div[style*="repeat(3,1fr)"]');var subIn=bIn.querySelector('.lk-subtotal'),subOut=bOut.querySelector('.lk-subtotal');var grand=content.querySelector('.lk-grand');if(grand&&!grand.querySelector('.lk-g-caret')){grand.id='lkGrandBar';grand.insertAdjacentHTML('beforeend','<svg class="ei lk-g-caret"><use href="#icon-chevron-down"/></svg>');grand.onclick=function(){var det=document.getElementById('lkSumDetail');if(!det)return;det.classList.toggle('open');grand.classList.toggle('open');window.__lkSumOpen=det.classList.contains('open');};}var det=document.createElement('div');det.id='lkSumDetail';if(statsGrid){statsGrid.style.marginBottom='0';det.appendChild(statsGrid);}var subRow=document.createElement('div');subRow.id='lkSubRow';if(subIn)subRow.appendChild(subIn);if(subOut)subRow.appendChild(subOut);det.appendChild(subRow);if(window.__lkSumOpen){det.classList.add('open');if(grand)grand.classList.add('open');}var bar=document.createElement('div');bar.innerHTML='<div class="qs-tabs" id="lkTabBar"><button type="button" class="qs-tab" data-lktab="in"><span class="qs-icon"><svg><use href="#icon-in"/></svg></span><span class="qs-label">Penerimaan</span></button><button type="button" class="qs-tab" data-lktab="out"><span class="qs-icon"><svg><use href="#icon-out"/></svg></span><span class="qs-label">Biaya</span></button><button type="button" class="qs-tab" data-lktab="stat"><span class="qs-icon"><svg><use href="#icon-chart"/></svg></span><span class="qs-label">Data</span></button></div>';var tabEl=bar.firstChild;hIn.parentNode.insertBefore(grand,hIn);hIn.parentNode.insertBefore(det,hIn);hIn.parentNode.insertBefore(tabEl,hIn);[bIn,bOut,bStat].forEach(function(b){b.classList.add('lk-page');});setLkTab(window.__lkTab||'in');if(r){injectKasAwal(r);relabelLK(r);}styleCmm();if(!window.__lkTabBind){window.__lkTabBind=true;document.addEventListener('click',function(e){var t=e.target.closest?e.target.closest('#lkTabBar .qs-tab'):null;if(!t)return;setLkTab(t.getAttribute('data-lktab'));},true);}}
+  function emptyState(){var tab=document.getElementById('rptTabLK');if(!tab)return;var ban=document.getElementById('lkActiveReportBanner');if(ban)ban.style.display='none';Array.prototype.forEach.call(tab.querySelectorAll('.report-section-title'),function(t){t.style.display='none';});var hl=document.getElementById('lkHistoryList');if(hl)hl.style.display='none';Array.prototype.forEach.call(tab.querySelectorAll('.lk-section'),function(s){s.style.display='none';});var ib=tab.querySelector('.btn-add-lk[onclick*="openLKImportModal"]');if(ib)ib.style.display='none';if(!document.getElementById('lkEmptyCard')){var d=document.createElement('div');d.id='lkEmptyCard';d.className='lk-empty';d.innerHTML='<svg class="ei"><use href="#icon-plane"/></svg><div><b style="color:var(--primary)">Belum ada laporan luar kota.</b><br><small>Tombol Buat Baru di bawah untuk memulai.</small></div>';var bb=tab.querySelector('.btn-add-lk');var row=bb?bb.parentElement:null;if(row)tab.insertBefore(d,row);}}
+  function install(){if(typeof window.openReportTab!=='function'||typeof window.viewLKReportDetail!=='function'){setTimeout(install,150);return;}if(window.openReportTab.__v87)return;css();memoLK();hookRecalc();var oRT=window.openReportTab;window.openReportTab=function(tab){var r=oRT.apply(this,arguments);if(tab==='lk'){if(lkReports.length)viewLKReportDetail(pickDefault());else emptyState();}else{document.body.classList.remove('lk-open');}return r;};window.openReportTab.__v87=true;var oV=window.viewLKReportDetail;window.viewLKReportDetail=function(id){document.body.classList.add('lk-open');var lv=document.getElementById('lkDetailView');if(lv)lv.style.display='flex';var c=document.getElementById('lkDetailContent');if(c)c.innerHTML='<div style="padding:50px 20px;text-align:center;color:var(--text-light);font-size:11px;display:flex;flex-direction:column;align-items:center;gap:10px"><span class="cv-loading" style="border-color:var(--accent);border-top-color:transparent;width:22px;height:22px"></span> Memuat laporan\u2026</div>';var args=arguments,self=this;var run=function(){oV.apply(self,args);setTimeout(function(){injectSwitcher();paginateLK();hookRecalc();if(window.recalcLKDetail)recalcLKDetail(id);},40);};if(window.requestIdleCallback)requestIdleCallback(run,{timeout:350});else setTimeout(run,30);return;};var oCL=window.closeLKDetail;window.closeLKDetail=function(){document.body.classList.remove('lk-open');return oCL.apply(this,arguments);};var oC=window.createNewLKReport;if(typeof oC==='function'&&!oC.__v87){window.createNewLKReport=function(){var r=oC.apply(this,arguments);if(window.activeLKReportId)viewLKReportDetail(window.activeLKReportId);return r;};oC.__v87=true;}if(!window.deleteLKReport.__v87){window.deleteLKReport=function(id){showDangerConfirm('Hapus laporan ini?',function(cf){if(!cf)return;lkReports=lkReports.filter(function(r){return r.id!==id;});if(window.activeLKReportId===id){window.activeLKReportId=null;try{localStorage.removeItem('activeLKReportId');}catch(e){}if(typeof clearLKSyncUI==='function')clearLKSyncUI();}try{localStorage.setItem('lkReports',JSON.stringify(lkReports));}catch(e){alertDanger('Storage penuh!');}if(typeof renderLKHistory==='function')renderLKHistory();alertSuccess('Laporan dihapus!');if(!lkReports.length){closeLKDetail();openReportTab('lk');}else if(!lkReports.find(function(x){return x.id===window.currentLKDetailId;})){viewLKReportDetail(pickDefault());}});};window.deleteLKReport.__v87=true;}console.log('[v87R2] rombak LK: cash 3 kategori + bawaan di Data');}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
 })();
 </script>
@@ -8230,6 +8085,58 @@ body.order-mode #page-input .order-no-input{
   };
   window.loadHistory.__lhFlat=true;
   console.log('[LH-FLAT] loadHistory tunggal aktif');
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v94 R4 (LEBURAN v92+v93 + 7 FIX):
+   1) CMM luar faktur; Grand Total = faktur ASLI
+   2) CMM berwarna di baris pembayaran + baris CMM/Efektif
+   3) Pelunasan & share faktur pakai nilai asli
+   4) Edit tanggal nota di halaman EDIT (sync riwayat)
+   5) Fix sisa 0,00: list+detail+pelunasan sinkron LUNAS
+   6) Edit tanggal pelunasan: klik tanggal di baris pembayaran
+   7) Badge LUNAS samping nama dihapus (cukup keterangan kanan)
+   ========================================================== */
+(function(){
+  'use strict';
+  if(window.__v94)return;window.__v94=true;
+  function cmmSum(tx){var s=0;(tx.payments||[]).forEach(function(p){s+=(p.cmm||0);});return s;}
+  function isOut(tx){if(!tx)return false;if(tx.cmmOutside)return true;if((tx.specialDiscAmount||0)>0&&!(tx.payDiscount>0)){var ps=tx.payments||[];if(!ps.length)return true;if(Math.abs((ps[0].cmm||0)-tx.specialDiscAmount)<1)return true;}return false;}
+  function baseF(tx){var b=tx.finalGrandTotal!==undefined?tx.finalGrandTotal:(tx.grandTotal||0);if(isOut(tx)&&!tx.cmmOutside)b+=(tx.specialDiscAmount||0);return b;}
+  function fD2(d){return new Date(d).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});}
+  function fix0(x){return x>0&&x<1?0:Math.max(0,x);}
+  window.__fix0=fix0;
+  function css(){if(document.getElementById('v94-css'))return;var s=document.createElement('style');s.id='v94-css';s.textContent='#invDateDisplay.v94-editable{cursor:pointer;border-color:var(--accent)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent)}';document.head.appendChild(s);}
+  window.getRemainingBalance=function(tx,ha){if(!tx)return 0;if(tx.region==='LKOTM'||tx.region==='LKPRT')return 0;if(!ha)ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var b,c;if(isOut(tx)){b=baseF(tx);c=cmmSum(tx);}else{b=tx.finalGrandTotal!==undefined?tx.finalGrandTotal:tx.grandTotal;c=tx.payDiscount||0;}var p=tx.paidAmount||0,r=0;ha.forEach(function(h){if((h.isRetur||h.isPi)&&h.originalInvNo===tx.invNo&&!h.isCancelled)r+=(h.finalGrandTotal||h.grandTotal||0);});return fix0(b-c-p-r);};
+  function hookSpec(){if(window.getSpecialFromPopup.__v94)return;var o=window.getSpecialFromPopup;window.getSpecialFromPopup=function(x){return Math.round(o.apply(this,arguments)*100)/100;};window.getSpecialFromPopup.__v94=true;}
+  function saveNew(rows,payment,specialDisc){rows.sort(function(a,b){return (a.cat||'').localeCompare(b.cat||'');});var invNo=consumeInvNo('nota');if(!invNo)return invDupWarning();var sub=rows.reduce(function(s,r){return s+r.total;},0),disc=0;rows.forEach(function(r){if(/\(PM\)\s*$/i.test(String(r.desc||'').trim()))return;var it=findItemByDesc(r.desc),c=it?it.cat:(r.cat||'');if(it&&currentCustomer&&currentCustomer.disc&&currentCustomer.disc[c])disc+=r.total*currentCustomer.disc[c]/100;});var ong=(currentMode==='nota'&&!isPiMode)?(parseDecField('inputOngkir')||0):0,base=Math.max(0,sub-disc)+ong,paid=payment?(payment.cash+payment.transfer):0,note=payment&&payment.note?payment.note:'',parts=[];if(payment&&payment.cash>0)parts.push('Cash '+fmtCurrency(payment.cash));if(payment&&payment.transfer>0)parts.push('Transfer '+fmtCurrency(payment.transfer));if(!note&&parts.length)note=parts.join(' + ');if(specialDisc>0)note+=(note?' | ':'')+'CMM '+fmtCurrency(specialDisc);var pays=(payment&&paid>0)?[{amount:paid,cash:payment.cash||0,transfer:payment.transfer||0,bank:'',ref:'',date:new Date().toISOString(),note:note,cmm:specialDisc||0}]:[];var tx={invNo:invNo,date:new Date().toISOString(),cust:Object.assign({},currentCustomer),rows:rows,subTotal:sub,discTotal:disc,specialDiscAmount:specialDisc,ongkir:ong,grandTotal:base,finalGrandTotal:base,cmmOutside:true,isCash:payment?payment.cash>0:false,isTransfer:payment?payment.transfer>0:false,paidAmount:paid,payments:pays,isOrder:false,isRetur:false,isPi:false,isCancelled:false,_source:'manual'};var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');ha.unshift(tx);try{localStorage.setItem('txHistory',JSON.stringify(ha));}catch(e){alertDanger('Storage penuh!');}rows.forEach(function(r){var it=findItemByDesc(r.desc);if(it){stockData[it.name]=(stockData[it.name]||0)-r.qty;stockLog.unshift({item:it.name,type:'out',qty:r.qty,note:'Terjual: '+invNo,date:new Date().toISOString()});}});saveStockData();syncToActiveLKReport('invoices',{id:tx.invNo,amount:base,desc:tx.invNo+' - '+(tx.cust?tx.cust.name:''),date:tx.date});var msg='Tersimpan! <b>'+invNo+'</b><br>Faktur: <b>'+fmtCurrencyFull(base)+'</b>';if(specialDisc>0)msg+='<br>CMM: <b>'+fmtCurrencyFull(specialDisc)+'</b> (luar faktur)';if(paid>0){var sisa=fix0(base-specialDisc-paid);msg+='<br>Dibayar: <b>'+fmtCurrencyFull(paid)+'</b>'+(sisa<=0?'<br><b>LUNAS</b>':'<br>Sisa: <b>'+fmtCurrencyFull(sisa)+'</b>');}else msg+='<br>Belum dibayar';alertSuccess(msg);resetTransactionUI();}
+  function consumeDate(){var ov=window.__editDateOverride,gi=window.__editDateGI;if(!ov||gi==null)return;window.__editDateOverride=null;window.__editDateGI=null;var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');if(ha[gi]){ha[gi].date=ov;try{localStorage.setItem('txHistory',JSON.stringify(ha));}catch(e){}}var pill=document.getElementById('invDateDisplay');if(pill)pill.classList.remove('v94-editable');}
+  function hookSave(){if(window.doSaveTransaction.__v94)return;var o=window.doSaveTransaction;window.doSaveTransaction=function(rows,payment,specialDisc){if(window.__editGI>=0){var r=o.apply(this,arguments);consumeDate();setTimeout(function(){loadHistory();},0);return r;}return saveNew(rows,payment,specialDisc||0);};window.doSaveTransaction.__v94=true;}
+  function hookReset(){if(window.resetTransactionUI.__v94)return;var o=window.resetTransactionUI;window.resetTransactionUI=function(){consumeDate();return o.apply(this,arguments);};window.resetTransactionUI.__v94=true;}
+  function openPayDateEdit(gi,idx){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]'),tx=ha[gi];var p=tx&&tx.payments?tx.payments[idx]:null;if(!p)return alertWarning('Pembayaran tidak ditemukan!');enqueuePopup({type:'form',title:'Edit Tanggal Pembayaran',message:'<b>'+escapeHtml(tx.invNo)+'</b> • pembayaran #'+(idx+1),fields:[{key:'v94date',label:'Tanggal Pembayaran',type:'date',value:(p.date||'').slice(0,10)}],onConfirm:function(d){if(!d.v94date)return alertWarning('Tanggal wajib!');var od=new Date(p.date||Date.now()),nd=new Date(d.v94date+'T00:00:00');nd.setHours(od.getHours(),od.getMinutes(),od.getSeconds(),od.getMilliseconds());p.date=nd.toISOString();try{localStorage.setItem('txHistory',JSON.stringify(ha));}catch(e){alertDanger('Storage penuh!');}alertSuccess('Tanggal pembayaran diperbarui!');setTimeout(function(){loadHistory();if(window.currentDetailIdx===gi)renderHistoryDetail(gi);},0);}});}
+  function postDetail(gi){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]'),tx=ha[gi];if(!tx||!isOut(tx))return;var w=document.getElementById('invoiceDetailContent');if(!w)return;
+    try{Array.prototype.forEach.call(w.querySelectorAll('.ro-srow.disc'),function(el){if((el.textContent||'').indexOf('CMM')>=0)el.remove();});var tv=w.querySelector('.ro-srow.total .ro-srow-value');if(tv)tv.textContent=fmtCurrencyFull(baseF(tx));}catch(e){}
+    try{var pl=w.querySelector('.pay-list');if(pl&&!pl.querySelector('.v94-cmmc'))pl.innerHTML=pl.innerHTML.replace(/CMM Rp [\d.,]+/g,'<span class="v94-cmmc" style="color:var(--pi);font-weight:800">$&</span>');}catch(e){}
+    try{var grp=w.querySelector('.ro-sum-pay');if(grp&&!grp.querySelector('.v94-cmm')){var cs=cmmSum(tx),eff=Math.max(0,baseF(tx)-cs);var html='<div class="ro-srow v94-cmm"><span class="ro-srow-label" style="color:var(--danger)"><svg class="ei"><use href="#icon-scissors"/></svg> CMM (potongan luar faktur)</span><span class="ro-srow-value" style="color:var(--danger)">- '+fmtCurrencyFull(cs)+'</span></div><div class="ro-srow"><span class="ro-srow-label" style="font-weight:800">Tagihan Efektif</span><span class="ro-srow-value" style="font-weight:800">'+fmtCurrencyFull(eff)+'</span></div>';var st=grp.querySelector('.ro-status-line');if(st)st.insertAdjacentHTML('beforebegin',html);else grp.insertAdjacentHTML('beforeend',html);}}catch(e){}
+    try{Array.prototype.forEach.call(w.querySelectorAll('.pay-list .ro-srow'),function(row,i){var b=row.querySelector('.ro-srow-label span[style*="font-weight:700"]');if(b&&!b.dataset.v94dt){b.dataset.v94dt='1';b.style.color='var(--accent)';b.style.cursor='pointer';b.style.textDecoration='underline dotted';b.onclick=function(){openPayDateEdit(gi,i);};}});}catch(e){}}
+  function hookDetail(){if(window.renderHistoryDetail.__v94)return;var o=window.renderHistoryDetail;window.renderHistoryDetail=function(gi){var r=o.apply(this,arguments);setTimeout(function(){postDetail(gi);},45);setTimeout(function(){postDetail(gi);},220);return r;};window.renderHistoryDetail.__v94=true;}
+  function fixList(){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var cards=document.querySelectorAll('#historyList .tx-card');Array.prototype.forEach.call(cards,function(card){var m=(card.getAttribute('onclick')||'').match(/\d+/);if(!m)return;var tx=ha[parseInt(m[0],10)];if(!tx||tx.isCancelled||tx.isRetur||tx.isPi||tx.isOrder||tx.region==='LKOTM'||tx.region==='LKPRT')return;var name=card.querySelector('.tx-name');if(name)Array.prototype.forEach.call(name.querySelectorAll('.tx-badge-lunas'),function(b){b.remove();});var rem=window.getRemainingBalance(tx,ha);if(rem>0)return;var top=card.querySelector('.tx-card-top');if(top&&top.children[1]){var at=top.children[1].textContent||'';if(/sisa nota/i.test(at)||/belum bayar/i.test(at)){var ta=tx.finalGrandTotal!==undefined?tx.finalGrandTotal:tx.grandTotal;top.children[1].innerHTML='<div style="font-size:7px;font-weight:800;color:var(--success);text-transform:uppercase">Lunas</div><div class="tx-amount" style="color:var(--success)">'+fmtCurrency(ta)+'</div>';}}});}
+  function hookList(){if(window.loadHistory.__v94list)return;var o=window.loadHistory;window.loadHistory=function(){var r=o.apply(this,arguments);setTimeout(fixList,10);return r;};window.loadHistory.__v94list=true;}
+  function fixSettle(){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]'),byInv={};ha.forEach(function(t){byInv[t.invNo]=t;});Array.prototype.forEach.call(document.querySelectorAll('#settlementList .settle-card'),function(card){var inv=(card.getAttribute('data-key')||'').split('#')[0],tx=byInv[inv];if(!tx||!isOut(tx))return;var r1=card.querySelector('.st-r1');if(r1)r1.innerHTML=r1.innerHTML.replace(/Faktur Rp [\d.,]+/,'Faktur '+fmtCurrency(baseF(tx)));});}
+  function hookSettle(){if(window.renderSettlementList.__v94)return;var o=window.renderSettlementList;window.renderSettlementList=function(){var r=o.apply(this,arguments);setTimeout(fixSettle,0);return r;};window.renderSettlementList.__v94=true;}
+  function decInv(node,tx){if(!node||!isOut(tx))return;var base=baseF(tx),cs=cmmSum(tx),eff=Math.max(0,base-cs),divs=node.querySelectorAll('div'),bar=null,val=null,i;for(i=0;i<divs.length;i++){var st=divs[i].getAttribute('style')||'';if(st.indexOf('linear-gradient(135deg,#1e293b')>=0&&(divs[i].textContent||'').indexOf('TOTAL')>=0){bar=divs[i];val=divs[i].querySelector('span:last-child');break;}}if(val)val.textContent=fmtCurrencyFull(base);if(bar&&cs>0&&!bar.parentNode.querySelector('.v93-cmm'))bar.insertAdjacentHTML('afterend','<div class="v93-cmm" style="background:#fff;padding:8px 14px 10px;font-size:11px;border-top:1px dashed #e2e8f0;color:#0f172a"><div style="display:flex;justify-content:space-between;gap:10px;color:#dc2626;padding:2px 0"><span style="font-weight:700">POTONGAN CMM (LUAR FAKTUR)</span><span style="font-family:\'JetBrains Mono\',monospace;font-weight:700">- '+fmtCurrencyFull(cs)+'</span></div><div style="display:flex;justify-content:space-between;gap:10px;border-top:1px solid #1e293b;margin-top:6px;padding-top:6px"><span style="font-weight:800;letter-spacing:.4px">TOTAL EFEKTIF</span><span style="font-family:\'JetBrains Mono\',monospace;font-weight:800;font-size:13px">'+fmtCurrencyFull(eff)+'</span></div></div>');for(i=0;i<divs.length;i++){if((divs[i].textContent||'').indexOf('Terbilang')===0&&divs[i].querySelector('b')){divs[i].innerHTML='<b style="color:#0f172a;text-transform:uppercase;margin-right:6px">Terbilang</b>'+escapeHtml(safeTerbilang(eff));break;}}}
+  function hookInv(){if(window.buildInvoiceDOM.__v94)return;var o=window.buildInvoiceDOM;window.buildInvoiceDOM=function(tx){var n=o.apply(this,arguments);try{decInv(n,tx);}catch(e){}return n;};window.buildInvoiceDOM.__v94=true;}
+  function hookPopup(){if(window.enqueuePopup.__v94)return;var o=window.enqueuePopup;window.enqueuePopup=function(op){try{if(op&&op.type==='form'&&/^Edit Pembayaran #\d+$/.test(op.title||'')){var idx=parseInt(((op.title||'').match(/#(\d+)/)||[])[1],10)-1;var gi=window.currentDetailIdx;var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var tx=ha[gi];var p=tx&&tx.payments?tx.payments[idx]:null;if(p&&!op.__v94dt){op.__v94dt=true;op.fields=(op.fields||[]).slice();op.fields.push({key:'v94date',label:'Tanggal Pembayaran',type:'date',value:(p.date||'').slice(0,10)});var oc=op.onConfirm;op.onConfirm=function(d){var r=oc?oc(d):undefined;if(d&&d.v94date){var od=new Date(p.date||Date.now()),nd=new Date(d.v94date+'T00:00:00');nd.setHours(od.getHours(),od.getMinutes(),od.getSeconds(),od.getMilliseconds());p.date=nd.toISOString();try{localStorage.setItem('txHistory',JSON.stringify(ha));}catch(e){}setTimeout(function(){loadHistory();if(window.currentDetailIdx===gi)renderHistoryDetail(gi);},0);}return r;};}}}catch(e){}return o.apply(this,arguments);};window.enqueuePopup.__v94=true;}
+  function hookDateEdit(){if(window.__v94date)return;window.__v94date=true;document.addEventListener('click',function(e){var p=e.target.closest?e.target.closest('#invDateDisplay'):null;if(!p||window.__editGI<0)return;var ha=JSON.parse(localStorage.getItem('txHistory')||'[]'),tx=ha[window.__editGI];if(!tx)return;enqueuePopup({type:'form',title:'Ubah Tanggal Nota',message:'<b>'+escapeHtml(tx.invNo)+'</b> (mode edit)',fields:[{key:'date',label:'Tanggal Nota',type:'date',value:(window.__editDateOverride||tx.date).slice(0,10)}],onConfirm:function(d){if(!d.date)return alertWarning('Tanggal wajib!');var old=new Date(tx.date),nd=new Date(d.date+'T00:00:00');nd.setHours(old.getHours(),old.getMinutes(),old.getSeconds(),old.getMilliseconds());window.__editDateOverride=nd.toISOString();window.__editDateGI=window.__editGI;var pill=document.getElementById('invDateDisplay');if(pill)pill.innerHTML=fD2(nd);alertSuccess('Tanggal tersimpan saat Simpan.');}});},true);}
+  function hookEditStart(){if(!window.startEditNota||window.startEditNota.__v94)return;var o=window.startEditNota;window.startEditNota=function(gi){var r=o.apply(this,arguments);window.__editDateOverride=null;window.__editDateGI=null;var ha=JSON.parse(localStorage.getItem('txHistory')||'[]'),tx=ha[gi],pill=document.getElementById('invDateDisplay');if(tx&&pill){pill.innerHTML=fD2(tx.date);pill.classList.add('v94-editable');}return r;};window.startEditNota.__v94=true;}
+  function hookEditCancel(){if(!window.cancelEditNota||window.cancelEditNota.__v94)return;var o=window.cancelEditNota;window.cancelEditNota=function(){window.__editDateOverride=null;window.__editDateGI=null;var pill=document.getElementById('invDateDisplay');if(pill)pill.classList.remove('v94-editable');return o.apply(this,arguments);};window.cancelEditNota.__v94=true;}
+  function install(){css();hookSpec();hookSave();hookReset();hookDetail();hookList();hookSettle();hookInv();hookPopup();hookDateEdit();hookEditStart();hookEditCancel();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
+  window.addEventListener('load',install);
+  setTimeout(install,300);
+  setTimeout(install,1200);
+  console.log('[v94R4] leburan + 7 fix aktif');
 })();
 </script>
 </body>
