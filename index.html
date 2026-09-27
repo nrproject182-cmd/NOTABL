@@ -1224,7 +1224,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v6.7</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v6.8</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2520,7 +2520,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='6.7';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='6.8';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -8984,6 +8984,35 @@ body.order-mode #page-input .order-no-input{
   [400,1200,2600,4200,6000,8000].forEach(function(t){setTimeout(wrapPiutang,t);});
   setTimeout(install,400);setTimeout(install,1200);
   console.log('[v105R18] retur-source persist + bayar kunci CSS aktif');
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v106-R4b (ganti R4):
+   1) Popup save retur: showConfirm biru "Ya, Lanjutkan" + pesan
+      lengkap (faktur asal, customer, kredit, diskon, kondisi)
+   2) Rincian nota: label CMM cukup "CMM"; baris CMM + Tagihan
+      Efektif HANYA muncul kalau CMM > 0
+   3) Info Potongan Retur/PI HANYA muncul kalau ada retur/PI,
+      posisi DI BAWAH baris CMM (atau di atas status tanpa CMM)
+   Style: 1 fungsi 1 baris. HAPUS BLOK R4 LAMA.
+   ========================================================== */
+(function(){
+  'use strict';
+  if(window.__v106R4b)return;window.__v106R4b=true;
+  function kdIsPM4(s){return /\(PM\)\s*$/i.test(String(s==null?'':s).trim());}
+  function kdDisc4(rowsArr,cust){var d=0;rowsArr.forEach(function(r){if(kdIsPM4(r.desc))return;var im=findItemByDesc(r.desc);var c=im?im.cat:(r.cat||'');if(c&&cust&&cust.disc&&cust.disc[c]>0)d+=(r.total||0)*cust.disc[c]/100;});return d;}
+  function mySaveRetur4(){if(!returSourceTx)return alertWarning('Pilih faktur asal!');var rows=[],shortages=[];document.querySelectorAll('#inputRows tr').forEach(function(tr){var d=descOf(tr);var q=parseFloat(tr.querySelector('.qty-input').value)||0;var price=parseMoney(tr.querySelector('.price-input').value);var ri=tr.querySelector('.kr-input'),ti=tr.querySelector('.kt-input');var r=ri?parseInt(ri.value,10)||0:0,t=ti?parseInt(ti.value,10)||0:0,b=q-r;if(d&&q>0){rows.push({desc:d,qty:q,price:price,total:(q-t)*price,cat:tr.querySelector('.cat-input').value||'',qRusak:r,qTukar:t,qBagus:b});var it=findItemByRow(tr)||findItemByDesc(d);if(it&&t>(stockData[it.name]||0))shortages.push('<b>'+escapeHtml(it.name)+'</b> (tukar '+t+', stok bagus '+(stockData[it.name]||0)+')');}});if(!rows.length)return alertWarning('Tidak ada item retur!');var credit=rows.reduce(function(s,r){return s+r.total;},0);var cust=returSourceTx.cust||currentCustomer;var disc=kdDisc4(rows,cust);var net=Math.max(0,credit-disc);var tB=rows.reduce(function(s,r){return s+r.qBagus;},0),tR=rows.reduce(function(s,r){return s+r.qRusak;},0),tT=rows.reduce(function(s,r){return s+r.qTukar;},0);var msg='Retur dari faktur <b>'+escapeHtml(returSourceTx.invNo)+'</b> \u2022 '+escapeHtml(cust?cust.name:'-')+'<br>Kredit potong tagihan: <b>'+fmtCurrencyFull(net)+'</b>'+(disc>0?'<br>Diskon kategori: -'+fmtCurrencyFull(disc):'')+'<br><small>Kondisi: Bagus '+tB+' \u2022 Rusak '+tR+' \u2022 Tukar '+tT+' pcs</small>'+(tT>0?'<br><small style="color:var(--pi)">Tukar '+tT+' pcs: stok bagus keluar, TIDAK memotong tagihan</small>':'');var go=function(){showConfirm(msg,function(cf){if(!cf)return;var invNo=consumeInvNo('retur');if(!invNo)return invDupWarning();var rtx={invNo:invNo,date:new Date().toISOString(),cust:Object.assign({},cust),rows:rows,subTotal:credit,discTotal:disc,specialDiscAmount:0,ongkir:0,grandTotal:net,finalGrandTotal:net,isRetur:true,isPi:false,isCash:false,isTransfer:false,isOrder:false,isCancelled:false,originalInvNo:returSourceTx.invNo,baikQty:tB,rusakQty:tR,tukarQty:tT,_source:'manual'};var hist=JSON.parse(localStorage.getItem('txHistory')||'[]');hist.unshift(rtx);try{localStorage.setItem('txHistory',JSON.stringify(hist));}catch(e){alertDanger('Storage penuh!');}rows.forEach(function(rw){var it=findItemByDesc(rw.desc);if(!it)return;if(rw.qBagus>0){stockData[it.name]=(stockData[it.name]||0)+rw.qBagus;stockLog.unshift({item:it.name,type:'in',qty:rw.qBagus,note:'Retur: '+invNo,date:new Date().toISOString()});}if(rw.qRusak>0){stockRusak[it.name]=(stockRusak[it.name]||0)+rw.qRusak;stockLog.unshift({item:it.name,type:'rin',qty:rw.qRusak,note:'Retur rusak: '+invNo,date:new Date().toISOString()});}if(rw.qTukar>0){stockData[it.name]=(stockData[it.name]||0)-rw.qTukar;stockLog.unshift({item:it.name,type:'out',qty:rw.qTukar,note:'Tukar keluar (bagus): '+invNo,date:new Date().toISOString()});}});saveStockData();alertSuccess('Retur berhasil! <b>'+invNo+'</b> \u2022 '+fmtCurrencyFull(net)+'<br>Bagus '+tB+' \u2022 Rusak '+tR+' \u2022 Tukar '+tT);returSourceTx=null;modeStates.retur.sourceTx=null;modeStates.retur.rows=[];resetTransactionUI();});};if(shortages.length)showConfirm('Stok bagus tidak cukup untuk tukar:<br>'+shortages.join('<br>')+'<br><br>Tetap lanjutkan?',function(p){if(p)go();});else go();}
+  function cmmOfTx(tx){var cs=0;if(tx.cmmOutside)(tx.payments||[]).forEach(function(p){cs+=p.cmm||0;});else cs=tx.payDiscount||0;return cs;}
+  function fixCmm(gi){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var tx=ha[gi];if(!tx)return;var box=document.querySelector('#invoiceDetailContent .ro-summary-box');if(!box)return;var row=box.querySelector('.v94-cmm');if(!row)return;var lab=row.querySelector('.ro-srow-label');if(lab)lab.innerHTML='<svg class="ei"><use href="#icon-scissors"/></svg> CMM';if(cmmOfTx(tx)<=0){var nxt=row.nextElementSibling;if(nxt&&(nxt.textContent||'').indexOf('Tagihan Efektif')>=0)nxt.remove();row.remove();}}
+  function injectReturInfo(gi){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var tx=ha[gi];if(!tx)return;var box=document.querySelector('#invoiceDetailContent .ro-summary-box');if(!box)return;var old=box.querySelector('.ro-sum-retur');if(old)old.remove();var cuts=ha.filter(function(h){return (h.isRetur||h.isPi)&&h.originalInvNo===tx.invNo&&!h.isCancelled;});if(!cuts.length)return;var tot=0;var rowsHtml=cuts.map(function(h){var amt=h.finalGrandTotal!=null?h.finalGrandTotal:(h.grandTotal||0);tot+=amt;var d=new Date(h.date).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});return '<div class="ro-srow disc"><span class="ro-srow-label"><svg class="ei"><use href="#'+(h.isPi?'icon-scissors':'icon-return')+'"/></svg> '+escapeHtml(h.invNo)+' \u2022 '+d+'</span><span class="ro-srow-value">- '+fmtCurrencyFull(amt)+'</span></div>';}).join('');var html='<div class="ro-sum-group ro-sum-retur" style="margin:2px 0 8px"><div class="ro-sum-head">Potongan Retur / PI</div>'+rowsHtml+'<div class="ro-srow disc" style="font-weight:800;border-top:1px dashed var(--border);margin-top:4px;padding-top:5px"><span class="ro-srow-label">Total Potongan</span><span class="ro-srow-value">- '+fmtCurrencyFull(tot)+'</span></div><div style="font-size:8px;color:var(--text-light);margin-top:5px;line-height:1.5">Sisa tagihan = Grand Total \u2212 Pembayaran \u2212 Potongan Retur/PI \u2212 CMM</div></div>';var cmm=box.querySelector('.v94-cmm');var status=box.querySelector('.ro-status-line');var pay=box.querySelector('.ro-sum-pay');if(cmm)cmm.insertAdjacentHTML('afterend',html);else if(status)status.insertAdjacentHTML('beforebegin',html);else if(pay)pay.insertAdjacentHTML('beforeend',html);else box.insertAdjacentHTML('beforeend',html);}
+  function polish(gi){if(window.currentDetailIdx!==gi)return;fixCmm(gi);injectReturInfo(gi);}
+  function wrapDetail(){if(typeof window.renderHistoryDetail!=='function'||window.renderHistoryDetail.__vR4b)return;var o=window.renderHistoryDetail;window.renderHistoryDetail=function(gi){var r=o.apply(this,arguments);setTimeout(function(){polish(gi);},320);setTimeout(function(){polish(gi);},650);return r;};window.renderHistoryDetail.__vR4b=true;}
+  function install(){if(typeof window.saveReturFromTable==='function'&&!window.saveReturFromTable.__vR4b){window.saveReturFromTable=mySaveRetur4;window.saveReturFromTable.__vR4b=true;}wrapDetail();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){install();setTimeout(install,300);setTimeout(install,1200);});
+  else{install();setTimeout(install,300);setTimeout(install,1200);}
+  window.addEventListener('load',function(){setTimeout(install,80);});
+  console.log('[v106R4b] CMM rapi + retur info di bawah CMM aktif');
 })();
 </script>
 </body>
