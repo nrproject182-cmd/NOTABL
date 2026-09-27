@@ -1224,7 +1224,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v6.9</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v7.0</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2520,7 +2520,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='6.9';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='7.0';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -9135,5 +9135,81 @@ body.order-mode #page-input .order-no-input{
   console.log('[v106R5b] split pelunasan aktif + switch rincian faktur dihapus');
 })();
 </script>
+<script>
+/* ==========================================================
+   PATCH v106-R6c (ganti R6b):
+   1) Edit nota: log stok hanya DELTA per barang
+      (naik/baru = "Edit: -n", turun/dihapus = "Edit balik: +n")
+   2) Kartu stok: pill RUSAK di KIRI pill stok siap (ml-top, big)
+   3) Tab Rusak: tombol + RUSAK & - RUSAK berdampingan BALIK LAGI
+      + TUKAR BARANG di bawahnya; hint diperbarui
+   4) FIX: popup Kelola Barang dibuka -> input Customer/Note/Qty
+      di tab Rusak auto-reset (gak kebawa antar barang)
+   5) FIX: render stok baca stockRusak langsung dari localStorage
+      (bug ReferenceError di R6/R6b yang bikin pill gak pindah)
+   Style: 1 fungsi 1 baris. HAPUS BLOK R6/R6b LAMA.
+   ========================================================== */
+(function(){
+  'use strict';
+  if(window.__v106R6c)return;window.__v106R6c=true;
+  function injectCss6c(){if(document.getElementById('v106r6c-css'))return;var s=document.createElement('style');s.id='v106r6c-css';s.textContent='.ml-top .ml-stock.rusak{border-style:solid;box-shadow:0 2px 8px rgba(0,0,0,.06)}';document.head.appendChild(s);}
+  function rs6Load(){try{return JSON.parse(localStorage.getItem('stockRusak'))||{};}catch(e){return{};}}
+  function doSaveEdit5(rows,payment,specialDisc){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var gi=window.__editGI;var old=ha[gi];if(!old){window.__editGI=-1;window.__editKeepInvNo=null;var b0=document.getElementById('editNotaBanner');if(b0)b0.style.display='none';return;}specialDisc=specialDisc||0;rows.sort(function(a,b){return (a.cat||'').localeCompare(b.cat||'');});var subTotal=rows.reduce(function(s,r){return s+r.total;},0);var discTotal=0;rows.forEach(function(r){if(/\(PM\)\s*$/i.test(String(r.desc||'').trim()))return;var item=findItemByDesc(r.desc);var cat=item?item.cat:(r.cat||'');if(item&&old.cust&&old.cust.disc&&old.cust.disc[cat])discTotal+=r.total*old.cust.disc[cat]/100;});var ongkir=parseDecField('inputOngkir')||0;var barang=Math.max(0,subTotal-discTotal-specialDisc);var grand=barang+ongkir;var delta={};(old.rows||[]).forEach(function(r){var it=findItemByDesc(r.desc);if(it)delta[it.name]=(delta[it.name]||0)-(parseFloat(r.qty)||0);});rows.forEach(function(r){var it=findItemByDesc(r.desc);if(it)delta[it.name]=(delta[it.name]||0)+(parseFloat(r.qty)||0);});Object.keys(delta).forEach(function(nm){var d=delta[nm];if(!d)return;stockData[nm]=(stockData[nm]||0)-d;if(d>0)stockLog.unshift({item:nm,type:'out',qty:d,note:'Edit: '+old.invNo,date:new Date().toISOString()});else stockLog.unshift({item:nm,type:'in',qty:-d,note:'Edit balik: '+old.invNo,date:new Date().toISOString()});});var payments=(old.payments||[]).slice();var paid=old.paidAmount||0;if(payment){var pamt=(payment.cash||0)+(payment.transfer||0);if(pamt>0){var note=payment.note||'';var parts=[];if(payment.cash>0)parts.push('Cash '+fmtCurrency(payment.cash));if(payment.transfer>0)parts.push('Transfer '+fmtCurrency(payment.transfer));if(!note&&parts.length)note=parts.join(' + ');payments.push({amount:pamt,cash:payment.cash||0,transfer:payment.transfer||0,bank:'',ref:'',date:new Date().toISOString(),note:note,cmm:specialDisc||0});paid+=pamt;}}var tx=Object.assign({},old,{rows:rows,subTotal:subTotal,discTotal:discTotal,specialDiscAmount:specialDisc,ongkir:ongkir,grandTotal:barang,finalGrandTotal:grand,paidAmount:paid,payments:payments,editedAt:new Date().toISOString()});ha[gi]=tx;if(window.__editDateOverride&&window.__editDateGI===gi){ha[gi].date=window.__editDateOverride;window.__editDateOverride=null;window.__editDateGI=null;}try{localStorage.setItem('txHistory',JSON.stringify(ha));}catch(e){alertDanger('Storage penuh!');}saveStockData();window.__editGI=-1;window.__editKeepInvNo=null;var bn=document.getElementById('editNotaBanner');if(bn)bn.style.display='none';var pill=document.getElementById('invDateDisplay');if(pill)pill.classList.remove('v94-editable');alertSuccess('Nota <b>'+escapeHtml(tx.invNo)+'</b> diperbarui!');resetTransactionUI();loadHistory();if(document.getElementById('historyDetailView').style.display==='block')renderHistoryDetail(gi);}
+  function wrapEditSave(){if(typeof window.saveTransaction==='function'&&!window.saveTransaction.__vR6c){var o=window.saveTransaction;window.saveTransaction=function(){if(window.__editGI>=0){if(!currentCustomer)return alertWarning('Pilih customer!');var rows=collectValidRows();if(!rows.length)return alertWarning('Tidak ada item!');var hh=(JSON.parse(localStorage.getItem('txHistory')||'[]'))[window.__editGI];showConfirm('Simpan perubahan nota <b>'+escapeHtml(hh?hh.invNo:'')+'</b>?',function(cf){if(cf)doSaveEdit5(rows,null,0);});return;}return o.apply(this,arguments);};window.saveTransaction.__vR6c=true;}if(typeof window.doSaveTransaction==='function'&&!window.doSaveTransaction.__vR6c){var od=window.doSaveTransaction;window.doSaveTransaction=function(rows,payment,specialDisc){if(window.__editGI>=0){doSaveEdit5(rows,payment,specialDisc||0);return;}return od.apply(this,arguments);};window.doSaveTransaction.__vR6c=true;}}
+  function myStockTable6c(){if(typeof window.calculateRowsPerPage==='function')window.calculateRowsPerPage();var RS6=rs6Load();var data=items.filter(function(item){var q=state.stock.search;var ms=!q||item.name.toLowerCase().indexOf(q)>=0||item.cat.toLowerCase().indexOf(q)>=0||((item.desc||'').toLowerCase().indexOf(q)>=0)||((item.code||'').toLowerCase().indexOf(q)>=0)||((item.subCat||'').toLowerCase().indexOf(q)>=0)||((item.size||'').toLowerCase().indexOf(q)>=0);var mc=!state.stock.filterCat||normCat(item.cat)===state.stock.filterCat;var stock=stockData[item.name]||0;var rk=RS6[item.name]||0;var fr=state.stock.filterReady;var mr=fr==='ready'?stock>0:fr==='zero'?stock===0:fr==='minus'?stock<0:fr==='rusak'?rk>0:true;return ms&&mc&&mr;});data.sort(function(a,b){return normCat(a.cat).localeCompare(normCat(b.cat))||a.name.localeCompare(b.name);});var list=document.getElementById('stockList'),infoEl=document.getElementById('stockInfo');if(!data.length){list.innerHTML=E('<div class="ml-empty"><svg class="ei lg"><use href="#icon-box"/></svg> Tidak ada data</div>');infoEl.textContent='0 data';updateRusakUI();return;}var tp=Math.ceil(data.length/STOCK_PER_PAGE);if(state.stock.page>tp)state.stock.page=tp;if(state.stock.page<1)state.stock.page=1;var pd=data.slice((state.stock.page-1)*STOCK_PER_PAGE,state.stock.page*STOCK_PER_PAGE),gs=(state.stock.page-1)*STOCK_PER_PAGE;list.innerHTML=E(pd.map(function(item,i){var gi=items.indexOf(item),stock=stockData[item.name]||0,rk=RS6[item.name]||0;var sc=stock>0?'ok':stock===0?'zero':'out',ac=catAccent(item.cat);return '<div class="ml-card" style="--accent-cat:'+ac+';--i:'+(i%14)+'" onclick="openQuickStock('+gi+')">'+'<span class="ml-no" data-col="no">#'+(gs+i+1)+'</span>'+'<div class="ml-top"><div class="ml-name" data-col="name">'+escapeHtml(item.name)+'</div><div style="display:flex;gap:5px;align-items:center;flex-shrink:0">'+(rk>0?'<span class="ml-stock big rusak"><svg class="ei"><use href="#icon-alert"/></svg> '+rk+'</span>':'')+'<div class="ml-stock big '+sc+'" data-col="stock"><svg class="ei"><use href="#icon-box"/></svg> '+stock+'</div></div></div>'+'<div class="ml-meta"><span class="ml-tag code" data-col="code">'+escapeHtml(item.code||'\u2022')+'</span>'+(item.size?'<span class="ml-tag" data-col="size" style="font-weight:800">OS '+escapeHtml(item.size)+'</span>':'')+'<span class="ml-tag cat" data-col="cat" style="--accent-cat:'+ac+'">'+escapeHtml(item.cat||'\u2022')+'</span>'+'<span class="ml-price inline" data-col="price">'+fmtCurrency(item.price)+'</span></div>'+(item.desc?'<div data-col="desc" style="font-size:9px;color:var(--text-light);margin-top:5px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><svg class="ei" style="width:10px;height:10px;vertical-align:-1px"><use href="#icon-info"/></svg> '+escapeHtml(item.desc)+'</div>':'')+'</div>';}).join(''));infoEl.textContent=data.length+' data (Hal '+state.stock.page+'/'+tp+')';applyColumnVisibility('stock');playListAnim(list);updateRusakUI();requestAnimationFrame(function(){var c=document.querySelector('.master-list-wrapper');if(c)c.classList.toggle('no-anim',c.querySelectorAll('.ml-card').length>15);});}
+  function fixRusakPanel6c(){var p=document.getElementById('qsPanelRusak');if(!p||p.__vR6c)return;p.__vR6c=true;var ib=document.getElementById('qsRusakInBtn');var ob=document.getElementById('qsRusakOutBtn');if(ib){ib.style.flex='1';ib.innerHTML='+ RUSAK';}if(ob){ob.style.flex='1';ob.style.background='var(--danger)';ob.innerHTML='\u2212 RUSAK';}var sw=document.getElementById('qsSwapBtn');if(sw){sw.innerHTML='<svg style="width:14px;height:14px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><use href="#icon-refresh"/></svg> TUKAR BARANG (rusak + / siap \u2212)';var row=sw.parentElement;if(row&&!row.parentNode.querySelector('.qs-r6-hint')){var hint=document.createElement('div');hint.className='qs-r6-hint';hint.style.cssText='font-size:8.5px;color:var(--text-light);margin:0 0 8px;line-height:1.5';hint.innerHTML='<b>+ / \u2212 RUSAK</b> = koreksi manual stok rusak (buang, salah input, barang rusak gudang). <b>TUKAR BARANG</b> = penukaran customer (rusak + / siap \u2212). Retur otomatis menambah stok rusak.';row.parentNode.insertBefore(hint,row);}}}
+  function resetRusakFields(){var c=document.getElementById('qsRusakCust');if(c)c.value='';var n=document.getElementById('qsRusakNote');if(n)n.value='';var q=document.getElementById('qsRusakQty');if(q)q.value='1';}
+  function wrapQuickStock6c(){if(typeof window.openQuickStock!=='function'||window.openQuickStock.__vR6c)return;var o=window.openQuickStock;window.openQuickStock=function(){var r=o.apply(this,arguments);resetRusakFields();fixRusakPanel6c();return r;};window.openQuickStock.__vR6c=true;}
+  function install(){injectCss6c();wrapEditSave();if(typeof window.renderStockTable==='function'&&!window.renderStockTable.__vR6c){window.renderStockTable=myStockTable6c;window.renderStockTable.__vR6c=true;window.renderStockTable.__vR3=true;}wrapQuickStock6c();fixRusakPanel6c();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){install();setTimeout(install,300);setTimeout(install,1200);});
+  else{install();setTimeout(install,300);setTimeout(install,1200);}
+  window.addEventListener('load',function(){setTimeout(install,80);setTimeout(install,500);});
+  console.log('[v106R6c] plus/minus rusak balik + pill kiri stok + reset field aktif');
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v106-R6d (addon R6c, nanti lebur ke v106):
+   Konfirmasi sebelum eksekusi di tab Rusak (Kelola Barang):
+   + RUSAK / - RUSAK / TUKAR BARANG menampilkan data input
+   (qty, customer, note) + dampak stok rusak & siap jual
+   (sebelum -> sesudah). Eksekusi hanya setelah "Ya, Lanjutkan".
+   - Qty - RUSAK > stok rusak -> langsung ditolak (tanpa confirm)
+   - Tukar yang bikin siap jual minus -> warning merah di popup,
+     confirm ganda di dalamnya di-suppress
+   Style: 1 fungsi 1 baris.
+   ========================================================== */
+(function(){
+  'use strict';
+  if(window.__v106R6d)return;window.__v106R6d=true;
+  function rs6d(){try{return JSON.parse(localStorage.getItem('stockRusak'))||{};}catch(e){return{};}}
+  function curItem6d(){var idx=parseInt(document.getElementById('qsItemIdx').value,10);return (window.items&&items[idx])||null;}
+  function qty6d(){return parseInt(document.getElementById('qsRusakQty').value,10)||0;}
+  function meta6d(){var c=(document.getElementById('qsRusakCust').value||'').trim();var n=(document.getElementById('qsRusakNote').value||'').trim();return (c?'<br>\uD83D\uDC64 Customer: <b>'+escapeHtml(c)+'</b>':'')+(n?'<br>\u270E Note: '+escapeHtml(n):'');}
+  function autoYesOnce(re){var oc=window.showConfirm;window.showConfirm=function(m,cb){if(typeof m==='string'&&re.test(m)){setTimeout(function(){cb(true);},0);return;}return oc.apply(this,arguments);};setTimeout(function(){window.showConfirm=oc;},2000);}
+  function confirmWrap(btnId,build){var b=document.getElementById(btnId);if(!b||b.__vR6d)return;b.__vR6d=true;var orig=b.onclick;b.onclick=function(){var it=curItem6d();if(!it)return;if(orig&&orig.call)b.onclick=null;var q=qty6d();if(q<=0)return alertWarning('Qty harus > 0!');var msg=build(it,q);if(msg===null)return alertWarning('Stok rusak tidak cukup!');var needAuto=(btnId==='qsSwapBtn');var go=function(){if(orig)orig();};showConfirm(msg,function(cf){if(!cf)return;if(needAuto){var rs=rs6d();var s=stockData[it.name]||0;if(q>s)autoYesOnce(/akan minus/);}go();});};}
+  function buildIn(it,q){var rs=rs6d();var r=rs[it.name]||0;var s=stockData[it.name]||0;return '<b>+ RUSAK \u2022 '+escapeHtml(it.name)+'</b><br>Qty: <b>'+q+'</b>'+meta6d()+'<br><br><small>Dampak stok:</small><br>\u2022 Rusak: '+r+' \u2192 <b style="color:var(--warning)">'+(r+q)+'</b><br>\u2022 Siap jual: '+s+' (tetap)';}
+  function buildOut(it,q){var rs=rs6d();var r=rs[it.name]||0;if(q>r)return null;var s=stockData[it.name]||0;return '<b>\u2212 RUSAK (buang/koreksi) \u2022 '+escapeHtml(it.name)+'</b><br>Qty: <b>'+q+'</b>'+meta6d()+'<br><br><small>Dampak stok:</small><br>\u2022 Rusak: '+r+' \u2192 <b style="color:var(--success)">'+(r-q)+'</b><br>\u2022 Siap jual: '+s+' (tetap)';}
+  function buildSwap(it,q){var rs=rs6d();var r=rs[it.name]||0;var s=stockData[it.name]||0;var ns=s-q;return '<b>\u21C4 TUKAR BARANG \u2022 '+escapeHtml(it.name)+'</b><br>Qty: <b>'+q+'</b>'+meta6d()+'<br><br><small>Dampak stok:</small><br>\u2022 Rusak: '+r+' \u2192 <b style="color:var(--warning)">'+(r+q)+'</b><br>\u2022 Siap jual: '+s+' \u2192 <b style="color:'+(ns<0?'var(--danger)':'var(--success)')+'">'+ns+'</b>'+(ns<0?' <span style="color:var(--danger);font-weight:800">(MINUS!)</span>':'')+'<br><small>Tidak memotong nota mana pun.</small>';}
+  function install(){confirmWrap('qsRusakInBtn',buildIn);confirmWrap('qsRusakOutBtn',buildOut);confirmWrap('qsSwapBtn',buildSwap);}
+  function wrapOpen(){if(typeof window.openQuickStock!=='function'||window.openQuickStock.__vR6d)return;var o=window.openQuickStock;window.openQuickStock=function(){var r=o.apply(this,arguments);setTimeout(install,30);return r;};window.openQuickStock.__vR6d=true;}
+  function boot(){wrapOpen();install();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){boot();setTimeout(boot,400);setTimeout(boot,1200);});
+  else{boot();setTimeout(boot,400);setTimeout(boot,1200);}
+  window.addEventListener('load',function(){setTimeout(boot,80);});
+  console.log('[v106R6d] konfirmasi dampak stok di tab Rusak aktif');
+})();
+</script>
+<style id="v106-r6e-css">
+.ml-top .ml-stock.big{border:1px solid transparent}
+.ml-top .ml-stock.big.ok{border-color:color-mix(in srgb,var(--success) 45%,transparent)}
+.ml-top .ml-stock.big.zero{border-color:color-mix(in srgb,var(--text-light) 35%,transparent)}
+.ml-top .ml-stock.big.out{border-color:color-mix(in srgb,var(--danger) 45%,transparent)}
+[data-theme="dark"] .ml-top .ml-stock.big.ok{border-color:rgba(52,211,153,.45)}
+[data-theme="dark"] .ml-top .ml-stock.big.zero{border-color:rgba(148,163,184,.35)}
+[data-theme="dark"] .ml-top .ml-stock.big.out{border-color:rgba(248,113,113,.45)}
+.ml-top .ml-stock.big.rusak{border:1px solid color-mix(in srgb,var(--danger) 45%,transparent)}
+[data-theme="dark"] .ml-top .ml-stock.big.rusak{border-color:rgba(248,113,113,.5)}
+</style>
 </body>
 </html>
