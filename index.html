@@ -1224,7 +1224,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v7.0</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v7.1</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2520,7 +2520,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='7.0';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='7.1';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -9211,5 +9211,46 @@ body.order-mode #page-input .order-no-input{
 .ml-top .ml-stock.big.rusak{border:1px solid color-mix(in srgb,var(--danger) 45%,transparent)}
 [data-theme="dark"] .ml-top .ml-stock.big.rusak{border-color:rgba(248,113,113,.5)}
 </style>
+<script>
+/* ==========================================================
+   PATCH v106-R7d (ganti R7c, taruh PALING BAWAH):
+   1) Share WA pelunasan TANPA header tanggal & TANPA judul;
+      Harian = pelunasan HARI INI, Semua = semua tanggal,
+      keduanya group per customer
+   2) Tiap baris nota diberi keterangan (LUNAS) / (TITIP)
+      di belakang nominal (berlaku semua share + copy pelunasan)
+   3) Tebal (*WA*) untuk nama customer, TOTAL, GRAND TOTAL;
+      customer 1 nota tanpa CMM/retur = tanpa baris TOTAL
+   4) Force rewire menu/share/copy biar formatter lama gak menang
+   5) Pill stok siap & RUSAK di kartu stok ukuran kecil (11px)
+   Style: 1 fungsi 1 baris. HAPUS BLOK R7/R7b/R7c LAMA.
+   ========================================================== */
+(function(){
+  'use strict';
+  if(window.__v106R7d)return;window.__v106R7d=true;
+  function injectCss7d(){if(document.getElementById('v106r7d-css'))return;var s=document.createElement('style');s.id='v106r7d-css';s.textContent='.ml-top .ml-stock.big{font-size:11px;padding:2px 9px}.ml-top .ml-stock.big .ei{width:12px;height:12px}';document.head.appendChild(s);}
+  function waUrl(t){return 'https://wa.me/?text='+encodeURIComponent(t);}
+  function todayKey7(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  function retMap7(){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var m={};ha.forEach(function(h){if((h.isRetur||h.isPi)&&h.originalInvNo&&!h.isCancelled)m[h.originalInvNo]=(m[h.originalInvNo]||0)+(h.finalGrandTotal||h.grandTotal||0);});return m;}
+  function statusMaker(){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var byInv={};ha.forEach(function(t){byInv[t.invNo]=t;});return function(inv){var t=byInv[inv];if(!t)return '';var rem=((t.region==='LKOTM'||t.region==='LKPRT')&&typeof window.lkPayableRemaining==='function')?window.lkPayableRemaining(t,ha):getRemainingBalance(t,ha);return rem<=0?'LUNAS':'TITIP';};}
+  function head7(g){var nm=String(cleanCustName(g.name,g.code)||'').trim();return '*'+nm.toUpperCase()+(g.code?' ('+g.code+')':'')+'*\n';}
+  function block7(rows,rm,st){var out='',sum=0,cmm=0;rows.forEach(function(r){var tag=(parseFloat(r.amount)||0)+(parseFloat(r.cmm)||0);var s=st(r.invNo);out+=r.invNo+' = '+fmtCurrencyFull(tag)+(s?' ('+s+')':'')+'\n';sum+=(parseFloat(r.amount)||0);cmm+=(parseFloat(r.cmm)||0);});var hasRet=rows.some(function(r){return (rm[r.invNo]||0)>0;});if(cmm>0)out+='\u2702\uFE0F POT CAS / CMM = '+fmtCurrencyFull(cmm)+'\n';if(rows.length>1||cmm>0||hasRet)out+='*TOTAL = '+fmtCurrencyFull(sum)+'*\n';return out;}
+  function groupCust7(list){var map={},order=[];list.forEach(function(s){var code=s.custCode||('__NAME__'+s.custName);if(!map[code]){map[code]={name:s.custName,code:s.custCode,rows:[]};order.push(code);}map[code].rows.push(s);});return{map:map,order:order};}
+  function buildText7(list){var rm=retMap7();var st=statusMaker();list=list.slice().sort(function(a,b){return new Date(a.date)-new Date(b.date);});var txt='';var grand=0;var g7=groupCust7(list);g7.order.forEach(function(code,gi){var g=g7.map[code];if(gi>0)txt+='\n';txt+=head7(g);txt+=block7(g.rows,rm,st);g.rows.forEach(function(r){grand+=(parseFloat(r.amount)||0);});});txt+='\n*GRAND TOTAL = '+fmtCurrencyFull(grand)+'*';return txt;}
+  function visible7(method){var q=(document.getElementById('searchSettlement').value||'').toLowerCase();var all=window.computeSettlements();return all.filter(function(s){if(!((s[method]||0)>0))return false;var str=(s.custName+' '+s.custCode+' '+s.invNo+' '+(s.note||'')).toLowerCase();return !q||str.indexOf(q)>=0;});}
+  function shareMenu7(mode,method){var list=visible7(method);if(mode==='day'){var k=todayKey7();list=list.filter(function(s){return (s.date||'').slice(0,10)===k;});if(!list.length)return alertWarning('Tidak ada pelunasan '+method+' hari ini!');}else if(!list.length)return alertWarning('Tidak ada data pelunasan '+method+' untuk dishare!');window.open(waUrl(buildText7(list)),'_blank');}
+  function selectedList7(){var all=window.computeSettlements();return all.filter(function(s){return selectedSettleKeys.has(s.key);});}
+  function shareManual7(){if(typeof selectedSettleKeys==='undefined'||!selectedSettleKeys.size)return alertWarning('Pilih minimal 1 data pelunasan!');var sel=selectedList7();if(!sel.length)return alertWarning('Tidak ada data terpilih!');window.open(waUrl(buildText7(sel)),'_blank');}
+  function fbCopy7(t,cb){var ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;left:-9999px';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');cb();}catch(e){alertDanger('Gagal menyalin');}document.body.removeChild(ta);}
+  function copyManual7(){if(typeof selectedSettleKeys==='undefined'||!selectedSettleKeys.size)return alertWarning('Centang dulu nota yang mau dicopy!');var sel=selectedList7();if(!sel.length)return alertWarning('Tidak ada data terpilih!');var txt=buildText7(sel);var n=sel.length;var done=function(){alertSuccess('Disalin '+n+' baris ke clipboard!');};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){fbCopy7(txt,done);});}else fbCopy7(txt,done);}
+  function renderMenu7(m){m.innerHTML='<div class="tm-label">Share WhatsApp</div><div class="dropdown-item" id="st7DayCash"><svg><use href="#icon-wallet"/></svg> Harian \u2022 Hari Ini (Cash)</div><div class="dropdown-item" id="st7DayTrf"><svg><use href="#icon-bank"/></svg> Harian \u2022 Hari Ini (Transfer)</div><div class="tm-divider"></div><div class="dropdown-item" id="st7AllCash"><svg><use href="#icon-wallet"/></svg> Semua Tanggal (Cash)</div><div class="dropdown-item" id="st7AllTrf"><svg><use href="#icon-bank"/></svg> Semua Tanggal (Transfer)</div>';document.getElementById('st7DayCash').onclick=function(){m.classList.remove('open');shareMenu7('day','cash');};document.getElementById('st7DayTrf').onclick=function(){m.classList.remove('open');shareMenu7('day','transfer');};document.getElementById('st7AllCash').onclick=function(){m.classList.remove('open');shareMenu7('all','cash');};document.getElementById('st7AllTrf').onclick=function(){m.classList.remove('open');shareMenu7('all','transfer');};}
+  function installMenu7(){var b=document.getElementById('btnSettleSelect');if(!b)return;var wrap=b.closest('.filter-dropdown-wrap');var m=document.getElementById('settleActionMenu');if(!m&&wrap)m=wrap.querySelector('.filter-dropdown-menu');if(!m){m=document.createElement('div');m.className='filter-dropdown-menu';m.id='settleActionMenu';m.style.width='min(240px,calc(100vw - 24px))';(wrap||b.parentNode).appendChild(m);}b.onclick=function(){renderMenu7(m);m.classList.toggle('open');};}
+  function install(){injectCss7d();installMenu7();window.shareSettlementsToWA=shareManual7;window.shareSettlementsToWA.__vR7d=true;var c=document.getElementById('btnCopySettle');if(c){c.onclick=copyManual7;c.__vR7d=true;}}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){install();setTimeout(install,300);setTimeout(install,1200);setTimeout(install,2500);});
+  else{install();setTimeout(install,300);setTimeout(install,1200);setTimeout(install,2500);}
+  window.addEventListener('load',function(){setTimeout(install,80);setTimeout(install,300);setTimeout(install,1200);});
+  console.log('[v106R7d] share tanpa tanggal + status LUNAS/TITIP per nota aktif');
+})();
+</script>
 </body>
 </html>
