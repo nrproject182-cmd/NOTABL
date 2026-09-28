@@ -1224,7 +1224,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v7.1</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v7.2</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -1320,9 +1320,10 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
               <div class="ms-nota" id="msNota">Rp 0</div>
             </div>
             <div class="ms-btns">
-              <button class="btn-hist-pay ms-pay" id="msPayBtn" onclick="openMultiPayPopup()"><svg style="width:12px;height:12px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-1px"><use href="#icon-wallet"/></svg> Bayar</button>
-              <button class="ms-close" onclick="exitMultiPayMode()" title="Tutup"><svg><use href="#icon-x"/></svg></button>
-            </div>
+  <button type="button" id="msShareBtn" onclick="if(window.openMultiShare)window.openMultiShare();else alert('Patch v108R4 belum aktif!')" style="background:#25D366;color:#fff;height:34px;padding:0 12px;font-size:10px;border-radius:9px;display:inline-flex;align-items:center;gap:5px;font-weight:700;border:none;cursor:pointer"><svg style="width:12px;height:12px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round"><use href="#icon-share"/></svg> Share</button>
+  <button class="btn-hist-pay ms-pay" id="msPayBtn" onclick="openMultiPayPopup()"><svg style="width:12px;height:12px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-1px"><use href="#icon-wallet"/></svg> Bayar</button>
+  <button class="ms-close" onclick="exitMultiPayMode()" title="Tutup"><svg><use href="#icon-x"/></svg></button>
+</div>
           </div>
         </div>
         <div id="historyList" class="history-list"></div>
@@ -2520,7 +2521,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='7.1';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='7.2';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -9250,6 +9251,227 @@ body.order-mode #page-input .order-no-input{
   else{install();setTimeout(install,300);setTimeout(install,1200);setTimeout(install,2500);}
   window.addEventListener('load',function(){setTimeout(install,80);setTimeout(install,300);setTimeout(install,1200);});
   console.log('[v106R7d] share tanpa tanggal + status LUNAS/TITIP per nota aktif');
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v106-R11 (ganti R10):
+   1) Hapus penanda "Nx bayar"
+   2) Ongkir jadi SATU baris akumulasi per customer (posisi
+      seperti baris CMM, tanpa icon), dijumlah dari semua
+      nota customer tsb yg ikut di-share
+   Style: 1 fungsi 1 baris.
+   ========================================================== */
+(function(){
+  'use strict';
+  if(window.__v106R11)return;window.__v106R11=true;
+  function waUrl(t){return 'https://wa.me/?text='+encodeURIComponent(t);}
+  function ongkirMap11(){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var m={};ha.forEach(function(t){m[t.invNo]=(typeof getOngkir==='function')?(getOngkir(t)||0):(t.ongkir||0);});return m;}
+  function retMap11(){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var m={};ha.forEach(function(h){if((h.isRetur||h.isPi)&&h.originalInvNo&&!h.isCancelled)m[h.originalInvNo]=(m[h.originalInvNo]||0)+(h.finalGrandTotal||h.grandTotal||0);});return m;}
+  function statusMaker11(){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var byInv={};ha.forEach(function(t){byInv[t.invNo]=t;});return function(inv){var t=byInv[inv];if(!t)return '';var rem=((t.region==='LKOTM'||t.region==='LKPRT')&&typeof window.lkPayableRemaining==='function')?window.lkPayableRemaining(t,ha):getRemainingBalance(t,ha);return rem<=0?'LUNAS':'TITIP';};}
+  function mergeByInv11(list){var map={},order=[];list.forEach(function(s){var k=s.invNo;if(!map[k]){map[k]={invNo:s.invNo,custName:s.custName,custCode:s.custCode,amount:0,cmm:0,cash:0,transfer:0,date:s.date,count:0};order.push(k);}var m=map[k];m.amount+=(parseFloat(s.amount)||0);m.cmm+=(parseFloat(s.cmm)||0);m.cash+=(parseFloat(s.cash)||0);m.transfer+=(parseFloat(s.transfer)||0);m.count++;if(s.date<m.date)m.date=s.date;});return order.map(function(k){return map[k];});}
+  function groupCust11(list){var map={},order=[];list.forEach(function(s){var code=s.custCode||('__NAME__'+s.custName);if(!map[code]){map[code]={name:s.custName,code:s.custCode,rows:[]};order.push(code);}map[code].rows.push(s);});return{map:map,order:order};}
+  function head11(g){var nm=String(cleanCustName(g.name,g.code)||'').trim();return '*'+nm.toUpperCase()+(g.code?' ('+g.code+')':'')+'*\n';}
+  function block11(rows,rm,st,om){var out='',sum=0,cmm=0,ong=0;rows.forEach(function(r){var tag=r.amount+r.cmm;var s=st(r.invNo);out+=r.invNo+' = '+fmtCurrencyFull(tag)+(s?' ('+s+')':'')+'\n';sum+=r.amount;cmm+=r.cmm;ong+=(om[r.invNo]||0);});var hasRet=rows.some(function(r){return (rm[r.invNo]||0)>0;});if(cmm>0)out+='\u2702\uFE0F POT CAS / CMM = '+fmtCurrencyFull(cmm)+'\n';if(ong>0)out+='Ongkir = '+fmtCurrencyFull(ong)+'\n';if(rows.length>1||cmm>0||hasRet||ong>0)out+='*TOTAL = '+fmtCurrencyFull(sum)+'*\n';return out;}
+  function buildText11(list){var rm=retMap11(),st=statusMaker11(),om=ongkirMap11();var merged=mergeByInv11(list);merged.sort(function(a,b){return new Date(a.date)-new Date(b.date);});var g=groupCust11(merged);var txt='',grand=0;g.order.forEach(function(code,gi){var c=g.map[code];if(gi>0)txt+='\n';txt+=head11(c);txt+=block11(c.rows,rm,st,om);c.rows.forEach(function(r){grand+=r.amount;});});txt+='\n*GRAND TOTAL = '+fmtCurrencyFull(grand)+'*';return txt;}
+  function visible11(method){var q=(document.getElementById('searchSettlement').value||'').toLowerCase();var all=window.computeSettlements();return all.filter(function(s){if(!((s[method]||0)>0))return false;var str=(s.custName+' '+s.custCode+' '+s.invNo+' '+(s.note||'')).toLowerCase();return !q||str.indexOf(q)>=0;});}
+  function shareMenu11(mode,method){var list=visible11(method);if(mode==='day'){var d=new Date();var k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');list=list.filter(function(s){return (s.date||'').slice(0,10)===k;});if(!list.length)return alertWarning('Tidak ada pelunasan '+method+' hari ini!');}else if(!list.length)return alertWarning('Tidak ada data pelunasan '+method+' untuk dishare!');window.open(waUrl(buildText11(list)),'_blank');}
+  function selectedList11(){var all=window.computeSettlements();return all.filter(function(s){return selectedSettleKeys.has(s.key);});}
+  function shareManual11(){if(typeof selectedSettleKeys==='undefined'||!selectedSettleKeys.size)return alertWarning('Pilih minimal 1 data pelunasan!');var sel=selectedList11();if(!sel.length)return alertWarning('Tidak ada data terpilih!');window.open(waUrl(buildText11(sel)),'_blank');}
+  function fbCopy11(t,cb){var ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;left:-9999px';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');cb();}catch(e){alertDanger('Gagal menyalin');}document.body.removeChild(ta);}
+  function copyManual11(){if(typeof selectedSettleKeys==='undefined'||!selectedSettleKeys.size)return alertWarning('Centang dulu nota yang mau dicopy!');var sel=selectedList11();if(!sel.length)return alertWarning('Tidak ada data terpilih!');var txt=buildText11(sel);var n=sel.length;var done=function(){alertSuccess('Disalin '+n+' nota ke clipboard!');};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){fbCopy11(txt,done);});}else fbCopy11(txt,done);}
+  function renderMenu11(m){m.innerHTML='<div class="tm-label">Share WhatsApp</div><div class="dropdown-item" id="st11DayCash"><svg><use href="#icon-wallet"/></svg> Harian \u2022 Hari Ini (Cash)</div><div class="dropdown-item" id="st11DayTrf"><svg><use href="#icon-bank"/></svg> Harian \u2022 Hari Ini (Transfer)</div><div class="tm-divider"></div><div class="dropdown-item" id="st11AllCash"><svg><use href="#icon-wallet"/></svg> Semua Tanggal (Cash)</div><div class="dropdown-item" id="st11AllTrf"><svg><use href="#icon-bank"/></svg> Semua Tanggal (Transfer)</div>';document.getElementById('st11DayCash').onclick=function(){m.classList.remove('open');shareMenu11('day','cash');};document.getElementById('st11DayTrf').onclick=function(){m.classList.remove('open');shareMenu11('day','transfer');};document.getElementById('st11AllCash').onclick=function(){m.classList.remove('open');shareMenu11('all','cash');};document.getElementById('st11AllTrf').onclick=function(){m.classList.remove('open');shareMenu11('all','transfer');};}
+  function installMenu11(){var b=document.getElementById('btnSettleSelect');if(!b){setTimeout(installMenu11,200);return;}var wrap=b.closest('.filter-dropdown-wrap');var m=document.getElementById('settleActionMenu');if(!m&&wrap)m=wrap.querySelector('.filter-dropdown-menu');if(!m){m=document.createElement('div');m.className='filter-dropdown-menu';m.id='settleActionMenu';m.style.width='min(240px,calc(100vw - 24px))';(wrap||b.parentNode).appendChild(m);}b.onclick=function(){renderMenu11(m);m.classList.toggle('open');};}
+  function install(){installMenu11();window.shareSettlementsToWA=shareManual11;window.shareSettlementsToWA.__vR11=true;var c=document.getElementById('btnCopySettle');if(c){c.onclick=copyManual11;c.__vR11=true;}}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){install();setTimeout(install,300);setTimeout(install,1200);});
+  else{install();setTimeout(install,300);setTimeout(install,1200);}
+  window.addEventListener('load',function(){setTimeout(install,80);setTimeout(install,400);});
+  console.log('[v106-R11] ongkir akumulasi per customer (tanpa icon) aktif');
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v107:
+   1) Penerimaan LK: Bawaan Cash dipisah OTM vs PRT
+   2) Penjualan Cash REG dipecah: Otomotif+Piston / Pertanian
+      (+ baris Lainnya & BDG Impor hanya kalau ada nilainya,
+      biar SETOR KE BCA gak bocor)
+   3) Mode Pilih di Riwayat: bebas beda customer
+   4) Tombol Share di tiap kartu riwayat (seperti di detail)
+   Style: 1 fungsi 1 baris.
+   ========================================================== */
+(function(){
+  'use strict';
+  if(window.__v107)return;window.__v107=true;
+
+  /* ===== 1+2) BREAKDOWN BARU ===== */
+  function breakdown107(r){
+    var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');
+    var dep=new Date(r.departDate);dep.setHours(0,0,0,0);
+    var ret=new Date(r.returnDate);ret.setHours(23,59,59,999);
+    function inP(d){var x=new Date(d);return x>=dep&&x<=ret;}
+    var cbO=0,cbP=0,crO=0,crP=0,crL=0,crB=0;
+    ha.forEach(function(tx){
+      if(!tx||tx.isCancelled)return;
+      var lk=tx.region==='LKOTM'||tx.region==='LKPRT';
+      var imp=(typeof isImportedTx==='function')?isImportedTx(tx):(tx._source==='import'||tx._imported===true);
+      var bdg=imp&&tx.region==='BDG';
+      var reg=!lk&&!imp&&!tx.isRetur&&!tx.isPi&&!tx.isOrder;
+      if(!lk&&!reg&&!bdg)return;
+      var tot=0,grp={O:0,P:0,L:0};
+      if(reg){(tx.rows||[]).forEach(function(rw){var g=(typeof lkGroupOf==='function')?lkGroupOf(rw):'LAIN';var v=parseFloat(rw.total)||0;tot+=v;if(g==='PERTANIAN')grp.P+=v;else if(g==='LAIN')grp.L+=v;else grp.O+=v;});}
+      (tx.payments||[]).forEach(function(p){
+        if(!inP(p.date))return;
+        var c=payCashOf(p);if(c<=0)return;
+        if(lk){if(tx.region==='LKOTM')cbO+=c;else cbP+=c;}
+        else if(bdg){crB+=c;}
+        else{if(tot>0){crO+=c*grp.O/tot;crP+=c*grp.P/tot;crL+=c*grp.L/tot;}else crL+=c;}
+      });
+    });
+    return {cbO:cbO,cbP:cbP,crO:crO,crP:crP,crL:crL,crB:crB};
+  }
+  function hookAuto107(){
+    if(typeof window.computeLKAuto!=='function'){setTimeout(hookAuto107,150);return;}
+    if(window.computeLKAuto.__v107)return;
+    var o=window.computeLKAuto;
+    window.computeLKAuto=function(r){
+      var res=o.apply(this,arguments);
+      if(res&&r&&r.departDate){var b=breakdown107(r);res.cashBawaanOTM=b.cbO;res.cashBawaanPRT=b.cbP;res.cashRegOtm=b.crO;res.cashRegPert=b.crP;res.cashRegLain=b.crL;res.cashBdg=crBsafe(b);}
+      return res;
+    };
+    window.computeLKAuto.__v107=true;
+  }
+  function crBsafe(b){return b.crB;}
+
+  /* ===== surgery DOM tab Penerimaan ===== */
+  function row107(label,val){return '<div class="lk-auto-row"><span class="lk-auto-l"><svg class="ei"><use href="#icon-check-circle"/></svg> '+label+'</span><span class="lk-auto-v">'+fmtCurrency(val)+'</span></div>';}
+  function surgery107(id){
+    var r=null;(window.lkReports||[]).forEach(function(x){if(x.id===id)r=x;});
+    if(!r)return;
+    var sec=document.getElementById('lkSec_in');if(!sec)return;
+    var auto=r._auto||window.computeLKAuto(r);
+    var rows=sec.querySelectorAll('.lk-auto-row'),i,l,t;
+    for(i=0;i<rows.length;i++){l=rows[i].querySelector('.lk-auto-l');t=l?(l.textContent||''):'';if(t.indexOf('Bawaan Cash (LK OTM + PRT)')>=0){rows[i].outerHTML=row107('Bawaan Cash Otomotif (LK OTM)',auto.cashBawaanOTM||0)+row107('Bawaan Cash Pertanian (LK PRT)',auto.cashBawaanPRT||0);break;}}
+    rows=sec.querySelectorAll('.lk-auto-row');
+    for(i=0;i<rows.length;i++){l=rows[i].querySelector('.lk-auto-l');t=l?(l.textContent||''):'';if(t.indexOf('Penjualan Cash (Reguler/BDG)')>=0){var h=row107('Penjualan Cash Otomotif + Piston (REG)',auto.cashRegOtm||0)+row107('Penjualan Cash Pertanian (REG)',auto.cashRegPert||0);if((auto.cashRegLain||0)>0)h+=row107('Penjualan Cash Lainnya (REG)',auto.cashRegLain);if((auto.cashBdg||0)>0)h+=row107('Penjualan Cash (BDG Impor)',auto.cashBdg);rows[i].outerHTML=h;break;}}
+    if(window.recalcLKDetail)window.recalcLKDetail(id);
+  }
+  function hookView107(){
+    if(typeof window.viewLKReportDetail!=='function'){setTimeout(hookView107,150);return;}
+    if(window.viewLKReportDetail.__v107)return;
+    var o=window.viewLKReportDetail;
+    window.viewLKReportDetail=function(id){
+      var r=o.apply(this,arguments);
+      setTimeout(function(){try{surgery107(id);}catch(e){}},260);
+      setTimeout(function(){try{surgery107(id);}catch(e){}},650);
+      return r;
+    };
+    window.viewLKReportDetail.__v107=true;
+  }
+
+  /* ===== 3) HAPUS ATURAN CUSTOMER HARUS SAMA ===== */
+  function hookSelect107(){
+    if(typeof window.toggleHistSelection!=='function'){setTimeout(hookSelect107,150);return;}
+    if(window.toggleHistSelection.__v107)return;
+    window.toggleHistSelection=function(gi){
+      var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');
+      var tx=ha[gi];if(!tx)return;
+      if(!selectedHistIds.has(gi)){selectedHistIds.add(gi);selClickOrder.push(gi);}
+      else{selectedHistIds.delete(gi);selClickOrder=selClickOrder.filter(function(x){return x!==gi;});}
+      updateMultiSelectInfo();loadHistory();
+    };
+    window.toggleHistSelection.__v107=true;
+  }
+
+  /* ===== 4) TOMBOL SHARE DI KARTU RIWAYAT ===== */
+  function injectCss107(){if(document.getElementById('v107-css'))return;var s=document.createElement('style');s.id='v107-css';s.textContent='#historyList .tx-card{position:relative}#historyList .tx-desc{padding-right:32px}.tx-sharebtn{position:absolute;right:9px;bottom:7px;width:26px;height:26px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-light);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;-webkit-tap-highlight-color:transparent}.tx-sharebtn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.tx-sharebtn:active{transform:scale(.9);color:var(--accent);border-color:var(--accent)}';document.head.appendChild(s);}
+  function injectShareBtns(){
+    var cards=document.querySelectorAll('#historyList .tx-card');
+    Array.prototype.forEach.call(cards,function(card){
+      if(card.querySelector('.tx-sharebtn'))return;
+      var m=(card.getAttribute('onclick')||'').match(/\d+/);if(!m)return;
+      var gi=parseInt(m[0],10);
+      var b=document.createElement('button');
+      b.type='button';b.className='tx-sharebtn';b.title='Share nota';
+      b.innerHTML='<svg><use href="#icon-share"/></svg>';
+      b.onclick=function(e){e.stopPropagation();e.preventDefault();window.shareHistoryInvoice(gi);};
+      card.appendChild(b);
+    });
+  }
+  function hookList107(){
+    if(typeof window.loadHistory!=='function'){setTimeout(hookList107,150);return;}
+    if(window.loadHistory.__v107)return;
+    var o=window.loadHistory;
+    window.loadHistory=function(){var r=o.apply(this,arguments);setTimeout(injectShareBtns,20);setTimeout(injectShareBtns,120);return r;};
+    window.loadHistory.__v107=true;
+  }
+
+  function install(){hookAuto107();hookView107();hookSelect107();injectCss107();hookList107();injectShareBtns();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){install();setTimeout(install,300);});
+  else{install();setTimeout(install,300);}
+  window.addEventListener('load',function(){setTimeout(install,80);setTimeout(install,400);});
+  console.log('[v107] bawaan split OTM/PRT + penjualan REG per kategori + share kartu + pilih bebas aktif');
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH v108R16 (ganti R15):
+   FIX share Piutang: ongkir gak double lagi —
+   - baris nota = sisa BARANG (sisa total - porsi ongkir belum bayar)
+   - baris Ongkir = porsi ongkir yang BELUM dibayar saja
+   - TOTAL = baris nota + ongkir = persis sisa di aplikasi
+   Sisanya sama: format ala Pelunasan, bar pemilihan rapi,
+   pilih semua per halaman, share kartu dibuang, dll.
+   Style: 1 baris per fungsi.
+   ========================================================== */
+(function(){
+  'use strict';
+  if(window.__v108R16)return;window.__v108R16=true;
+  var MS={list:[],nodes:[],idx:0,cache:{p:[],m:[]},pend:{p:[],m:[]}};
+  var RQ=Promise.resolve();
+  function msg108(e){return escapeHtml(e&&e.message?e.message:String(e));}
+  function enqueue(job){var p=RQ.then(job,function(e){throw e;});RQ=p.catch(function(){});return p;}
+  function css108(){if(document.getElementById('v108r8-css'))return;var s=document.createElement('style');s.id='v108r8-css';s.textContent='#m108Bar{display:none;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;padding:8px 10px calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:var(--surface);border-radius:0 0 14px 14px}#m108Bar .pg-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px;font-weight:800;cursor:pointer;flex-shrink:0}#m108Bar .pg-btn:disabled{opacity:.4}#m108Bar .pg-lbl{font-family:var(--font-mono);font-size:11px;font-weight:800;color:var(--text);min-width:34px;text-align:center}#m108Bar .act-btn{height:34px;padding:0 8px;font-size:10px;border-radius:10px;font-weight:700;border:1px solid var(--border);background:var(--surface);color:var(--text);display:inline-flex;align-items:center;gap:4px;cursor:pointer;flex:1 1 0;min-width:0;justify-content:center}#m108Bar .act-btn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}#m108Bar .act-btn.wa{background:#25D366;color:#fff;border-color:#25D366}#m108Bar .act-btn.md{background:var(--pi);color:#fff;border-color:var(--pi)}#invoiceShareModal:has(#m108Bar[style*="flex"]) #invoiceShareScroll{max-height:calc(78vh - 64px)}';document.head.appendChild(s);}
+  function css112(){if(document.getElementById('v108r12-css'))return;var s=document.createElement('style');s.id='v108r12-css';s.textContent='#multiSelectInfo{flex-direction:column!important;align-items:stretch!important;gap:9px!important}#multiSelectInfo .ms-info{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;flex-wrap:wrap!important;min-width:0}#multiSelectInfo .ms-topline{flex:1 1 auto;min-width:0}#multiSelectInfo .ms-nota{font-size:15px!important;flex-shrink:0;letter-spacing:-.3px}#multiSelectInfo .ms-btns{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:6px!important;width:100%!important;align-items:stretch!important}#multiSelectInfo .ms-btns>*{width:100%!important;height:36px!important;border-radius:9px!important;justify-content:center!important;font-size:10px!important;padding:0 4px!important;min-width:0!important}';document.head.appendChild(s);}
+  function css116(){if(document.getElementById('v108r16-css'))return;var s=document.createElement('style');s.id='v108r16-css';s.textContent='.tx-sharebtn{display:none!important}#historyList .tx-desc{padding-right:0!important}';document.head.appendChild(s);}
+  function fillerCells(n){var a=[];for(var c=0;c<n;c++){a.push('<td style="padding:0;border-top:1px solid #e2e8f0;height:22px;'+(c<n-1?'border-right:1px solid #e2e8f0;':'')+'"></td>');}return a.join('');}
+  function fixGrid(node){if(!node||!node.querySelectorAll)return;var tables=node.querySelectorAll('table');for(var t=0;t<tables.length;t++){var ths=tables[t].querySelectorAll('thead th');var n=ths.length;if(!n)continue;var trs=tables[t].querySelectorAll('tbody tr');for(var i=0;i<trs.length;i++){var tr=trs[i];var tds=tr.querySelectorAll('td');if(tds.length===1&&(tds[0].getAttribute('colspan')||'')!==''){tr.innerHTML=fillerCells(n);tds=tr.querySelectorAll('td');}for(var c2=0;c2<tds.length-1;c2++){tds[c2].style.borderRight='1px solid #e2e8f0';}}}}
+  function fixCmmNode(node){if(!node||!node.querySelectorAll)return;var els=node.querySelectorAll('div,span');for(var i=0;i<els.length;i++){var el=els[i];if(el.children.length)continue;var t=(el.textContent||'').trim();if(t==='POTONGAN CMM (LUAR FAKTUR)'||t==='POTONGAN CMM')el.textContent='CMM';}}
+  function fixCmmDetail(){var box=document.getElementById('invoiceDetailContent');if(!box)return;var labs=box.querySelectorAll('.ro-srow-label');for(var i=0;i<labs.length;i++){if((labs[i].textContent||'').indexOf('CMM (potongan luar faktur)')>=0)labs[i].innerHTML='<svg class="ei"><use href="#icon-scissors"/></svg> CMM';}}
+  function hookInv(){if(typeof window.buildInvoiceDOM!=='function'){setTimeout(hookInv,150);return;}if(window.buildInvoiceDOM.__v108R16)return;var o=window.buildInvoiceDOM;window.buildInvoiceDOM=function(tx){var n=o.apply(this,arguments);try{fixGrid(n);fixCmmNode(n);}catch(e){}return n;};window.buildInvoiceDOM.__v108R16=true;}
+  function hookDet(){if(typeof window.renderHistoryDetail!=='function'){setTimeout(hookDet,150);return;}if(window.renderHistoryDetail.__v108R16)return;var o=window.renderHistoryDetail;window.renderHistoryDetail=function(gi){var r=o.apply(this,arguments);setTimeout(fixCmmDetail,80);setTimeout(fixCmmDetail,300);return r;};window.renderHistoryDetail.__v108R16=true;}
+  function cleanShareBtns(){var bs=document.querySelectorAll('#historyList .tx-sharebtn');for(var i=0;i<bs.length;i++){if(bs[i].parentNode)bs[i].parentNode.removeChild(bs[i]);}}
+  function hookListClean(){if(typeof window.loadHistory!=='function'){setTimeout(hookListClean,150);return;}if(window.loadHistory.__v108R16)return;var o=window.loadHistory;window.loadHistory=function(){var r=o.apply(this,arguments);setTimeout(cleanShareBtns,10);setTimeout(cleanShareBtns,120);setTimeout(cleanShareBtns,400);return r;};window.loadHistory.__v108R16=true;}
+  function isRegTx(t){return !!t&&!t.isCancelled&&!t.isRetur&&!t.isPi&&!t.isOrder&&!(t._source==='import'||t._imported===true)&&t.region!=='LKOTM'&&t.region!=='LKPRT';}
+  function selectedRegList(){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var out=[];(window.selClickOrder||[]).forEach(function(gi){if(!selectedHistIds.has(gi))return;var tx=ha[gi];if(isRegTx(tx))out.push(tx);});return out;}
+  function buildPage(tx,wm){if(wm)window.__shareWithModal2=true;var n=buildInvoiceDOM(tx);if(wm)window.__shareWithModal2=false;return n;}
+  function renderPage(i,wm){var key=wm?'m':'p';if(MS.cache[key][i])return Promise.resolve(MS.cache[key][i]);if(MS.pend[key][i])return MS.pend[key][i];var pr=enqueue(function(){return new Promise(function(res,rej){if(typeof html2canvas!=='function'){rej(new Error('html2canvas belum termuat.'));return;}var node=buildPage(MS.list[i],wm);var host=document.createElement('div');host.style.cssText='position:fixed;left:-10000px;top:0;width:1200px;background:#fff;z-index:-1;pointer-events:none';document.body.appendChild(host);host.appendChild(node);setTimeout(function(){html2canvas(node,{scale:2,backgroundColor:'#ffffff',useCORS:true,allowTaint:true,logging:false,windowWidth:1123}).then(function(c){if(host.parentNode)host.parentNode.removeChild(host);c.toBlob(function(b){if(!b){rej(new Error('blob gagal.'));return;}MS.cache[key][i]=b;res(b);},'image/png',0.92);}).catch(function(e){if(host.parentNode)host.parentNode.removeChild(host);rej(e);});},30);});});MS.pend[key][i]=pr;pr.then(function(){MS.pend[key][i]=null;},function(){MS.pend[key][i]=null;});return pr;}
+  function renderAll(wm){var chain=Promise.resolve([]);MS.list.forEach(function(tx,i){chain=chain.then(function(arr){return renderPage(i,wm).then(function(b){arr.push(b);return arr;});});});return chain;}
+  function warmup(){renderAll(false).then(function(){renderAll(true).catch(function(){});}).catch(function(){});}
+  function setLoading108(btn,on){if(!btn)return;if(on){if(!btn.dataset.orig)btn.dataset.orig=btn.innerHTML;btn.disabled=true;btn.innerHTML='<span class="cv-loading"></span> Proses\u2026';}else{btn.disabled=false;if(btn.dataset.orig)btn.innerHTML=btn.dataset.orig;}}
+  function fitPage(){var scroll=document.getElementById('invoiceShareScroll');var stage=document.getElementById('invoiceShareStage');if(!scroll||!stage)return;var inv=stage.firstElementChild;if(!inv)return;inv.style.transform='';inv.style.transformOrigin='';stage.style.width='';stage.style.height='';stage.style.overflow='';var avail=scroll.clientWidth-24;var w=inv.offsetWidth||inv.scrollWidth;if(!avail||!w)return;var s=Math.min(1,avail/w);if(s<1){inv.style.transformOrigin='top left';inv.style.transform='scale('+s+')';stage.style.width=Math.floor(w*s)+'px';stage.style.height=Math.floor((inv.offsetHeight*s)+2)+'px';stage.style.overflow='hidden';}}
+  function showPage(i){MS.idx=i;var stage=document.getElementById('invoiceShareStage');if(stage){stage.innerHTML='';stage.appendChild(MS.nodes[i]);}var lbl=document.getElementById('m108Page');if(lbl)lbl.textContent=(i+1)+'/'+MS.nodes.length;var pv=document.getElementById('m108Prev'),nx=document.getElementById('m108Next');if(pv)pv.disabled=(i<=0);if(nx)nx.disabled=(i>=MS.nodes.length-1);fitPage();}
+  function ensureBar(){var modal=document.getElementById('invoiceShareModal');if(!modal)return null;var bar=document.getElementById('m108Bar');if(bar)return bar;bar=document.createElement('div');bar.id='m108Bar';bar.innerHTML='<button type="button" class="pg-btn" id="m108Prev">\u2039</button><span class="pg-lbl" id="m108Page">1/1</span><button type="button" class="pg-btn" id="m108Next">\u203A</button><button type="button" class="act-btn" id="m108Cp"><svg><use href="#icon-image"/></svg> Salin</button><button type="button" class="act-btn wa" id="m108Wa"><svg><use href="#icon-phone"/></svg> WhatsApp</button><button type="button" class="act-btn md" id="m108Md"><svg><use href="#icon-scissors"/></svg> +Modal</button>';modal.querySelector('.modal-content').appendChild(bar);document.getElementById('m108Prev').onclick=function(){if(MS.idx>0)showPage(MS.idx-1);};document.getElementById('m108Next').onclick=function(){if(MS.idx<MS.nodes.length-1)showPage(MS.idx+1);};return bar;}
+  function copyCurrent(btn){setLoading108(btn,true);renderPage(MS.idx,false).then(function(b){setLoading108(btn,false);if(!navigator.clipboard||typeof ClipboardItem==='undefined'){alertWarning('Browser ini belum dukung salin gambar.');return;}try{navigator.clipboard.write([new ClipboardItem({'image/png':Promise.resolve(b)})]).then(function(){alertSuccess('Halaman '+(MS.idx+1)+' dari '+MS.nodes.length+' <b>disalin</b>!');},function(){alertDanger('Gagal menyalin gambar.');});}catch(e){alertDanger('Gagal menyalin gambar.');}}).catch(function(e){setLoading108(btn,false);alertDanger('Gagal membuat gambar: '+msg108(e));});}
+  function filesFromBlobs(blobs){var files=[];blobs.forEach(function(b,i){try{files.push(new File([b],'faktur-'+(i+1)+'.png',{type:'image/png',lastModified:Date.now()}));}catch(e){}});return files;}
+  function shareOne(i,wm){return renderPage(i,wm).then(function(b){return new Promise(function(res,rej){var f=null;try{f=new File([b],'faktur-'+(i+1)+'.png',{type:'image/png',lastModified:Date.now()});}catch(e){}if(!f||typeof navigator.share!=='function'){rej(new Error('share tidak tersedia'));return;}navigator.share({files:[f]}).then(function(){res(true);}).catch(function(er){if(er&&er.name==='AbortError')res(false);else rej(er);});});});}
+  function seqFrom(i,wm){shareOne(i,wm).then(function(ok){if(!ok)return;if(i+1<MS.list.length){enqueuePopup({type:'question',title:'Halaman '+(i+1)+'/'+MS.list.length+' terkirim \u2705',message:'Lanjut kirim halaman berikutnya?',buttons:[{text:'Share halaman '+(i+2),cls:'primary',action:'next'},{text:'Selesai',cls:'secondary',action:'stop'}],callback:function(a){if(a==='next')seqFrom(i+1,wm);}});}else{alertSuccess('Semua '+MS.list.length+' halaman terkirim!');}}).catch(function(e){alertDanger('Gagal share halaman '+(i+1)+': '+msg108(e));});}
+  function shareAll(wm,btn){setLoading108(btn,true);renderAll(wm).then(function(blobs){var files=filesFromBlobs(blobs);if(!files.length||typeof navigator.share!=='function'){setLoading108(btn,false);alertWarning('Browser ini gak punya fitur share gambar.');return;}var can=true;if(navigator.canShare)can=navigator.canShare({files:files});if(!can){setLoading108(btn,false);seqFrom(0,wm);return;}navigator.share({files:files}).then(function(){setLoading108(btn,false);}).catch(function(er){setLoading108(btn,false);if(er&&er.name==='AbortError')return;seqFrom(0,wm);});}).catch(function(e){setLoading108(btn,false);alertDanger('Gagal membuat gambar: '+msg108(e));});}
+  window.openMultiShare=function(){var list=selectedRegList();if(!list.length)return alertWarning('Tidak ada nota REG terpilih!');if(list.length>10)return alertWarning('Maksimal 10 nota per share gabungan.');MS.list=list;MS.idx=0;MS.cache={p:[],m:[]};MS.pend={p:[],m:[]};MS.nodes=list.map(function(tx){return buildInvoiceDOM(tx);});var modal=document.getElementById('invoiceShareModal');var title=modal.querySelector('.ish-title');if(title)title.innerHTML='<svg><use href="#icon-file"/></svg><span style="display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.2">Pratinjau '+list.length+' Nota REG<span style="font-size:8.5px;font-weight:600;color:var(--text-light);font-family:var(--font-main)">Salin = halaman ini \u2022 WhatsApp/+Modal = semua halaman</span></span>';var acts=modal.querySelector('.ish-acts');if(acts)acts.innerHTML='';var bar=ensureBar();if(bar)bar.style.display='flex';document.getElementById('m108Cp').onclick=function(){copyCurrent(this);};document.getElementById('m108Wa').onclick=function(){shareAll(false,this);};document.getElementById('m108Md').onclick=function(){shareAll(true,this);};showPage(0);modal.classList.add('open');warmup();setTimeout(fitPage,60);setTimeout(fitPage,350);};
+  function splitRem(tx,rem){var ong=(typeof getOngkir==='function')?(getOngkir(tx)||0):(tx.ongkir||0);var base=tx.finalGrandTotal!=null?tx.finalGrandTotal:(tx.grandTotal||0);var paid=tx.paidAmount||0;var g=Math.max(0,base-ong);var pg=Math.min(paid,g);var po=paid-pg;var ro=Math.max(0,ong-po);if(ro>rem)ro=rem;return {rb:rem-ro,ro:ro};}
+  function piutangRows(){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var out=[];(window.selClickOrder||[]).forEach(function(gi){if(!selectedHistIds.has(gi))return;var tx=ha[gi];if(!tx||tx.isCancelled||tx.isRetur||tx.isPi||tx.isOrder)return;var rem=((tx.region==='LKOTM'||tx.region==='LKPRT')&&typeof window.lkPayableRemaining==='function')?window.lkPayableRemaining(tx,ha):getRemainingBalance(tx,ha);if(rem>0){var sp=splitRem(tx,rem);out.push({tx:tx,rem:rem,rb:sp.rb,ro:sp.ro});}});return out;}
+  function buildPiutangText(rows){var map={},order=[];rows.forEach(function(x){var code=(x.tx.cust&&x.tx.cust.code)||('__NAME__'+(x.tx.cust?x.tx.cust.name:'-'));if(!map[code]){map[code]={name:x.tx.cust?x.tx.cust.name:'-',code:x.tx.cust?x.tx.cust.code:'',rows:[]};order.push(code);}map[code].rows.push(x);});var txt='',grand=0;order.forEach(function(code,gi){var g=map[code];if(gi>0)txt+='\n';txt+='*'+String(cleanCustName(g.name,g.code)||g.name).toUpperCase()+(g.code?' ('+g.code+')':'')+'*\n';var tot=0,ong=0;g.rows.forEach(function(x){txt+=x.tx.invNo+' = '+fmtCurrencyFull(x.rb)+'\n';tot+=x.rb;ong+=x.ro;});if(ong>0)txt+='Ongkir = '+fmtCurrencyFull(ong)+'\n';if(g.rows.length>1||ong>0)txt+='*TOTAL = '+fmtCurrencyFull(tot+ong)+'*\n';grand+=tot+ong;});txt+='\n*GRAND TOTAL = '+fmtCurrencyFull(grand)+'*';return txt;}
+  function sharePiutang(){var rows=piutangRows();if(!rows.length)return alertWarning('Tidak ada nota terpilih dengan sisa piutang (nota lunas dilewati)!');window.open('https://wa.me/?text='+encodeURIComponent(buildPiutangText(rows)),'_blank');}
+  function selectAllPage(){if(!multiPayMode){alertWarning('Aktifkan mode Pilih dulu (Aksi \u25B8 Pilih)!');return;}var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var per=window.HISTORY_PER_PAGE||25;var start=((state.history.page||1)-1)*per;var pageGIs=(window.filteredHistoryGIs||[]).slice(start,start+per);var count=0;pageGIs.forEach(function(gi){var tx=ha[gi];if(!tx||tx.isCancelled||tx.isRetur||tx.isPi||tx.isOrder)return;if(!selectedHistIds.has(gi)){selectedHistIds.add(gi);selClickOrder.push(gi);count++;}});if(count>0){updateMultiSelectInfo();loadHistory();alertSuccess('Dipilih <b>'+count+'</b> nota di halaman ini.');}else{alertWarning('Tidak ada nota yang bisa dipilih di halaman ini.');}}
+  function injectPilihSemua(){var menu=document.getElementById('histActionsMenu');if(!menu||!menu.classList.contains('open'))return;if(menu.querySelector('#actPilihSemua'))return;var pilih=document.getElementById('actPilih');var sem=document.createElement('div');sem.className='dropdown-item';sem.id='actPilihSemua';sem.innerHTML='<svg><use href="#icon-check"/></svg> Pilih Semua <span style="margin-left:auto;font-size:7.5px;color:var(--text-light)">(halaman ini)</span>';sem.onclick=function(){menu.classList.remove('open');selectAllPage();};if(pilih)pilih.insertAdjacentElement('afterend',sem);else menu.appendChild(sem);}
+  function hookAksiClick(){if(window.__v108R16c)return;window.__v108R16c=true;document.addEventListener('click',function(e){var t=e.target&&e.target.closest?e.target.closest('#btnHistActions'):null;if(!t)return;setTimeout(injectPilihSemua,0);setTimeout(injectPilihSemua,120);},true);}
+  function hideBar(){var b=document.getElementById('m108Bar');if(b)b.style.display='none';}
+  function hookSingleShare(){if(window.__v108R16h)return;window.__v108R16h=true;['shareHistoryInvoice','sendDraftInvoiceToWA'].forEach(function(n){var o=window[n];if(typeof o!=='function')return;window[n]=function(){var r=o.apply(this,arguments);setTimeout(hideBar,60);return r;};});}
+  function ensureMsBtn(){var bar=document.getElementById('multiSelectInfo');if(!bar)return;var btns=bar.querySelector('.ms-btns');if(!btns)return;if(!document.getElementById('msShareBtn')){var b=document.createElement('button');b.type='button';b.id='msShareBtn';b.style.cssText='background:#25D366;color:#fff;height:36px;padding:0 4px;font-size:10px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;gap:5px;font-weight:700;border:none;cursor:pointer;width:100%';b.innerHTML='<svg style="width:12px;height:12px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round"><use href="#icon-share"/></svg> Share';b.onclick=function(e){e.stopPropagation();window.openMultiShare();};btns.insertBefore(b,btns.firstChild);}if(!document.getElementById('msPiutangBtn')){var p=document.createElement('button');p.type='button';p.id='msPiutangBtn';p.style.cssText='background:#d97706;color:#fff;height:36px;padding:0 4px;font-size:10px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;gap:5px;font-weight:700;border:none;cursor:pointer;width:100%';p.innerHTML='<svg style="width:12px;height:12px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><use href="#icon-clock"/></svg> Piutang';p.onclick=function(e){e.stopPropagation();sharePiutang();};var sh=document.getElementById('msShareBtn');if(sh&&sh.nextSibling)btns.insertBefore(p,sh.nextSibling);else btns.insertBefore(p,btns.firstChild);}}
+  function install(){css108();css112();css116();hookInv();hookDet();hookListClean();cleanShareBtns();ensureMsBtn();hookSingleShare();hookAksiClick();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){install();setTimeout(install,300);setTimeout(install,900);});else{install();setTimeout(install,300);setTimeout(install,900);}
+  window.addEventListener('load',function(){setTimeout(install,80);setTimeout(install,600);setTimeout(cleanShareBtns,1000);});
+  console.log('[v108R16] piutang: ongkir dipisah dari baris nota (anti double) aktif');
 })();
 </script>
 </body>
