@@ -9,8 +9,7 @@
    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
    <link rel="icon" type="image/png" sizes="152x152" href="./icon-152.png">
    <link rel="apple-touch-icon" href="./icon-192.png">
-   <meta name="theme-color" content="#0f172a">
-<script>(function(){try{var t=localStorage.getItem('theme');if(!t)t=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+   <meta name="theme-color" content="#ffffff">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter/400.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter/500.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter/600.css">
@@ -48,104 +47,6 @@
     --retur: #a78bfa; --cash: #34d399; --pi: #fb923c; --transfer: #818cf8;
     --row-focus: rgba(99,102,241,.08); --highlight-bg: #854d0e; --highlight-text: #fef3c7;
 }
-
-/* =========================================
-   2. DARK MODE OVERRIDES (CONSOLIDATED)
-   ========================================= */
-[data-theme="dark"] body { background: var(--bg); }
-[data-theme="dark"] .container { background: radial-gradient(125% 60% at 50% 102%, rgba(99,102,241,.12), transparent 60%), radial-gradient(70% 35% at 50% 102%, rgba(56,189,248,.05), transparent 55%), linear-gradient(180deg, #0f1424, #0b0f1d); }
-[data-theme="dark"] .pro-header { background: linear-gradient(180deg, #111830 0%, #0f1424 80%, rgba(99,102,241,.05) 100%); border-bottom-color: rgba(148,163,184,.08); box-shadow: 0 1px 20px rgba(0,0,0,.4); }
-[data-theme="dark"] .trans-header, [data-theme="dark"] .master-list-wrapper, [data-theme="dark"] .settings-inline-panel, [data-theme="dark"] .ro-summary-box, [data-theme="dark"] .qs-tabs, [data-theme="dark"] .stock-log-container { border-color: rgba(148,163,184,.08); }
-[data-theme="dark"] .table-wrapper { border-color: rgba(148,163,184,.08); box-shadow: 0 2px 12px rgba(0,0,0,.3); }
-[data-theme="dark"] .bottom-nav, [data-theme="dark"] .pagination { background: linear-gradient(180deg, #111830, #0f1424); border-color: rgba(148,163,184,.08); }
-[data-theme="dark"] .bottom-nav { box-shadow: 0 -4px 24px rgba(0,0,0,.5); }
-[data-theme="dark"] .control-wrap { background: rgba(15,20,36,.8); border-color: rgba(148,163,184,.08); box-shadow: inset 0 1px 3px rgba(0,0,0,.3); }
-[data-theme="dark"] .search-field { background: linear-gradient(180deg, rgba(20,28,52,.72), rgba(13,18,33,.6)); border-color: rgba(148,163,184,.14); box-shadow: inset 0 1px 0 rgba(255,255,255,.045), inset 0 2px 7px rgba(0,0,0,.38); }
-[data-theme="dark"] .search-field:focus-within { background: linear-gradient(180deg, rgba(28,36,66,.82), rgba(15,20,36,.66)); border-color: var(--accent); box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 0 0 3px rgba(129,140,248,.16), 0 6px 20px rgba(0,0,0,.42); }
-[data-theme="dark"] .sf-clear { background: rgba(148,163,184,.14); color: var(--text-light); }
-[data-theme="dark"] .ml-card { background: linear-gradient(150deg, #141c34, #0f1424); border-color: rgba(148,163,184,.10); box-shadow: 0 2px 10px rgba(0,0,0,.32); }
-[data-theme="dark"] .ml-tag { background: rgba(15,20,36,.6); border-color: rgba(148,163,184,.12); color: var(--text); }
-[data-theme="dark"] .ml-tag.cat { background: color-mix(in srgb, var(--accent-cat) 16%, rgba(15,20,36,.6)); border-color: color-mix(in srgb, var(--accent-cat) 38%, rgba(148,163,184,.12)); }
-[data-theme="dark"] .ml-stock.ok { background: rgba(52,211,153,.14); color: #34d399; }
-[data-theme="dark"] .ml-stock.zero { background: rgba(148,163,184,.12); color: #7c8798; }
-[data-theme="dark"] .ml-stock.out { background: rgba(248,113,113,.14); color: #f87171; }
-[data-theme="dark"] .ml-tempo { background: rgba(99,102,241,.14); color: #a5b4fc; }
-[data-theme="dark"] .ml-tempo.cash { background: rgba(15,20,36,.6); color: var(--text-light); border-color: rgba(148,163,184,.12); }
-[data-theme="dark"] .cd-pill { background: hsl(var(--h) 38% 15%); border-color: hsl(var(--h) 42% 28%); }
-[data-theme="dark"] .cd-cat { color: hsl(var(--h) 52% 72%); }
-[data-theme="dark"] .cd-pct { color: hsl(var(--h) 72% 76%); background: hsl(var(--h) 42% 22%); }
-[data-theme="dark"] .report-card { background: linear-gradient(145deg, #131a30, #0f1424); border-color: rgba(148,163,184,.08); }
-[data-theme="dark"] .report-table-wrap, [data-theme="dark"] .inv-detail-wrap { background: #0f1424; border-color: rgba(148,163,184,.1); }
-[data-theme="dark"] .report-table th { background: rgba(99,102,241,.06); border-bottom-color: rgba(148,163,184,.1); }
-[data-theme="dark"] .report-table td, [data-theme="dark"] .tx-card, [data-theme="dark"] .lk-import-item, [data-theme="dark"] .lk-item, [data-theme="dark"] .retur-item-row, [data-theme="dark"] .ac-item-row { border-bottom-color: rgba(148,163,184,.06); }
-[data-theme="dark"] .inv-detail-bar { background: rgba(99,102,241,.05); border-bottom-color: rgba(148,163,184,.08); }
-[data-theme="dark"] .modal-content { background: linear-gradient(180deg, #131a30, #0f1424); border: 1px solid rgba(148,163,184,.1); }
-[data-theme="dark"] .popup-card { background: linear-gradient(180deg, #151d38, #0f1424); border-color: rgba(148,163,184,.1); }
-[data-theme="dark"] .dropdown-menu, [data-theme="dark"] .filter-dropdown-menu { background: linear-gradient(180deg, #151d38, #111830); border-color: rgba(148,163,184,.12); }
-[data-theme="dark"] .date-group { background: rgba(99,102,241,.06); border-left-color: var(--accent); }
-[data-theme="dark"] .btn-action, [data-theme="dark"] .btn-pro-fixed, [data-theme="dark"] .btn-filter-dropdown, [data-theme="dark"] .btn-hist-action, [data-theme="dark"] .page-btn, [data-theme="dark"] .inv-act-btn, [data-theme="dark"] .col-toggle-btn { background: rgba(15,20,36,.6); border-color: rgba(148,163,184,.1); color: var(--text); }
-[data-theme="dark"] .btn-action.save, [data-theme="dark"] .btn-pro-fixed.primary { background: linear-gradient(140deg, #818cf8, #6366f1); color: #fff; border-color: transparent; }
-[data-theme="dark"] .btn-action.menu-btn { border-color: rgba(148,163,184,.12); }
-[data-theme="dark"] .inv-control, [data-theme="dark"] .inv-step-btn { background: rgba(15,20,36,.6); border-color: rgba(148,163,184,.1); }
-[data-theme="dark"] #invPrefix { background: rgba(99,102,241,.1); color: var(--accent); border-right-color: rgba(148,163,184,.1); }
-[data-theme="dark"] .inv-step-btn { border-left-color: rgba(148,163,184,.08); }
-[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background: rgba(15,20,36,.6); border-color: rgba(148,163,184,.1); color: var(--text); }
-[data-theme="dark"] input:focus, [data-theme="dark"] select:focus { border-color: var(--accent); background: rgba(99,102,241,.06); }
-[data-theme="dark"] .cust-name-input { background: rgba(15,20,36,.6)!important; border-color: rgba(148,163,184,.1)!important; }
-[data-theme="dark"] .autocomplete-list { background: #131a30; border-color: rgba(148,163,184,.12); }
-[data-theme="dark"] .autocomplete-item:hover, [data-theme="dark"] .autocomplete-item.active, [data-theme="dark"] .ac-item-row:hover, [data-theme="dark"] .ac-item-row.active { background: rgba(99,102,241,.1); }
-[data-theme="dark"] #globalItemAcList { background: #131a30; border-color: rgba(99,102,241,.3); }
-[data-theme="dark"] .ac-header-bar { background: rgba(99,102,241,.06); border-bottom-color: rgba(148,163,184,.08); }
-[data-theme="dark"] .ac-code-tag, [data-theme="dark"] .ac-cat-tag { background: rgba(15,20,36,.6); border-color: rgba(148,163,184,.1); }
-[data-theme="dark"] .ac-stock-ok { background: rgba(52,211,153,.12); color: #34d399; }
-[data-theme="dark"] .ac-stock-low { background: rgba(251,191,36,.12); color: #fbbf24; }
-[data-theme="dark"] .ac-stock-out { background: rgba(248,113,113,.12); color: #f87171; }
-[data-theme="dark"] .col-toggle-btn.active { background: rgba(99,102,241,.12); color: var(--accent); border-color: rgba(99,102,241,.3); }
-[data-theme="dark"] .btn-filter-dropdown.has-value { background: rgba(99,102,241,.1); color: var(--accent); border-color: rgba(99,102,241,.3); }
-[data-theme="dark"] .btn-hist-action.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-[data-theme="dark"] .ro-custinfo { background: rgba(99,102,241,.05); border-left-color: var(--accent); }
-[data-theme="dark"] .ro-table th { border-bottom-color: rgba(148,163,184,.1); }
-[data-theme="dark"] .tx-badge-cash, [data-theme="dark"] .tx-badge-lunas { background: rgba(52,211,153,.14); color: #34d399; }
-[data-theme="dark"] .tx-badge-retur { background: rgba(167,139,250,.14); color: #a78bfa; }
-[data-theme="dark"] .tx-badge-order, [data-theme="dark"] .tx-badge-bdg { background: rgba(129,140,248,.14); color: #a5b4fc; }
-[data-theme="dark"] .tx-badge-pi { background: rgba(251,146,60,.14); color: #fb923c; }
-[data-theme="dark"] .tx-badge-reg { background: rgba(148,163,184,.12); color: #7c8798; }
-[data-theme="dark"] .tx-badge-jkt { background: rgba(251,191,36,.14); color: #fbbf24; }
-[data-theme="dark"] .tx-badge-cancel { background: rgba(248,113,113,.14); color: #f87171; }
-[data-theme="dark"] .tx-chk { border-color: rgba(148,163,184,.15); }
-[data-theme="dark"] .tx-card.bulk-selected { background: rgba(99,102,241,.08); }
-[data-theme="dark"] #custInfoBox { background: rgba(99,102,241,.06); border-left-color: var(--accent); }
-[data-theme="dark"] .nav-item-bottom { color: var(--text-light); }
-[data-theme="dark"] .nav-item-bottom.active { color: var(--accent); }
-[data-theme="dark"] .pro-header-icon { background: linear-gradient(140deg, rgba(99,102,241,.1), rgba(15,20,36,.6)); border-color: rgba(99,102,241,.2); color: var(--accent); }
-[data-theme="dark"] .retur-items-container { border-color: rgba(148,163,184,.08); }
-[data-theme="dark"] .retur-summary { background: rgba(124,58,237,.08); border-color: rgba(167,139,250,.15); }
-[data-theme="dark"] .status-batal { background: rgba(248,113,113,.12); color: #f87171; }
-[data-theme="dark"] .tx-badge-overdue { background: rgba(248,113,113,.16); color: #f87171; }
-[data-theme="dark"] .transfer-info-box { background: rgba(99,102,241,.06); border-color: rgba(148,163,184,.08); border-left-color: var(--transfer); }
-[data-theme="dark"] .pay-recap, [data-theme="dark"] .pay-summary { background: rgba(15,20,36,.5); border-color: rgba(148,163,184,.1); }
-[data-theme="dark"] .settle-card.bulk-selected { background: rgba(99,102,241,.10); }
-[data-theme="dark"] .sp-bg .sp-blob { opacity: .38; }
-
-/* Dark Mode Polish: Invoice Date & Customer Row */
-[data-theme="dark"] .inv-date-display { background: linear-gradient(135deg, rgba(99,102,241,.12), rgba(15,20,36,.55)); border-color: rgba(129,140,248,.30); color: #e2e8f0; box-shadow: 0 2px 12px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.05); }
-[data-theme="dark"] .inv-date-display::before { opacity: 1; filter: drop-shadow(0 0 5px rgba(129,140,248,.45)); }
-[data-theme="dark"] .inv-date-display:hover { border-color: rgba(129,140,248,.55); background: linear-gradient(135deg, rgba(99,102,241,.18), rgba(20,28,52,.6)); box-shadow: 0 4px 18px rgba(99,102,241,.22), inset 0 1px 0 rgba(255,255,255,.07); }
-[data-theme="dark"] .inv-date-display:hover::before { transform: scale(1.12) rotate(-6deg); }
-[data-theme="dark"] .row-input { background: linear-gradient(135deg, rgba(20,28,52,.72), rgba(13,18,33,.6)); border-color: rgba(148,163,184,.14); box-shadow: 0 2px 12px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.04); }
-[data-theme="dark"] .row-input:focus-within { border-color: rgba(129,140,248,.55); box-shadow: 0 4px 20px rgba(99,102,241,.20), 0 0 0 3px rgba(129,140,248,.14), inset 0 1px 0 rgba(255,255,255,.06); }
-[data-theme="dark"] .cust-code-col { background: linear-gradient(135deg, rgba(129,140,248,.16), rgba(99,102,241,.05)); box-shadow: inset -1px 0 0 rgba(129,140,248,.16), inset 0 1px 0 rgba(255,255,255,.04); transition: box-shadow .25s var(--ease), background .25s var(--ease); }
-[data-theme="dark"] .row-input:focus-within .cust-code-col { background: linear-gradient(135deg, rgba(129,140,248,.24), rgba(99,102,241,.08)); box-shadow: inset -1px 0 0 rgba(129,140,248,.30), inset 0 1px 0 rgba(255,255,255,.06); }
-[data-theme="dark"] .cust-code-col input { color: #a5b4fc; text-shadow: 0 0 12px rgba(129,140,248,.35); }
-[data-theme="dark"] .cust-name-col { border-left: none; box-shadow: inset 1px 0 0 rgba(129,140,248,.10); }
-[data-theme="dark"] .cust-name-input { color: #f1f5f9; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
-[data-theme="dark"] .cust-name-input:hover { background: rgba(129,140,248,.07); }
-[data-theme="dark"] .cust-name-col::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23818cf8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); opacity: .75; }
-[data-theme="dark"] .row-input:focus-within .cust-name-col::after { opacity: 1; filter: drop-shadow(0 0 4px rgba(129,140,248,.5)); }
-[data-theme="dark"] .autocomplete-list.visible { background: linear-gradient(180deg, #151d38, #0f1424); border-color: rgba(129,140,248,.35); border-top-color: rgba(129,140,248,.18); box-shadow: 0 16px 40px rgba(0,0,0,.55); }
-[data-theme="dark"] .autocomplete-item .ac-main { color: #e2e8f0; }
-[data-theme="dark"] .wl-row.on .wl-ico { color: #fbbf24; filter: drop-shadow(0 0 6px rgba(251,191,36,.5)); }
-[data-theme="dark"] .tx-badge-ongkir { background: rgba(132,204,22,.14); color: #a3e635; border-color: rgba(132,204,22,.3); }
 
 /* =========================================
    3. BASE & RESET
@@ -186,7 +87,6 @@ body.show-bottomnav .pagination { bottom: calc(var(--nav-h) + env(safe-area-inse
 /* Icons */
 .ei { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -0.13em; display: inline-block; flex-shrink: 0; overflow: visible; }
 .ei.lg { width: 18px; height: 18px; vertical-align: -3px; }
-.ei.xl { width: 26px; height: 26px; vertical-align: 0; }
 .caret { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; vertical-align: -1px; margin-left: 2px; flex-shrink: 0; transition: transform .2s var(--ease); opacity: .7; }
 
 /* Headers */
@@ -334,7 +234,6 @@ body.show-bottomnav .pagination { bottom: calc(var(--nav-h) + env(safe-area-inse
 .ca-line { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; font-size: 10px; color: var(--text-light); font-weight: 600; letter-spacing: .2px; line-height: 1.3; }
 .ca-loc { display: inline-flex; align-items: center; gap: 4px; color: var(--text); font-weight: 800; }
 .ca-ico { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
-.ca-dot { color: var(--text-light); opacity: .55; font-weight: 700; }
 .ca-wa { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px 3px 8px; border-radius: 999px; background: var(--accent-light); border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border)); color: var(--accent); font-weight: 800; font-family: var(--font-mono); font-size: 10px; letter-spacing: .3px; text-decoration: none; line-height: 1; transition: transform .15s var(--ease), box-shadow .2s var(--ease), background .2s; }
 .ca-wa .ca-ico { stroke: var(--accent); }
 .ca-wa:hover { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 22%, transparent); transform: translateY(-1px); }
@@ -422,11 +321,6 @@ body.pi-mode .price-input { pointer-events: auto!important; background: transpar
 .fa-btns .btn-pay-now { background: linear-gradient(135deg, #16a34a, #059669); box-shadow: 0 2px 8px rgba(5,150,105,.28); }
 .fa-btns .btn-share-sm:hover, .fa-btns .btn-pay-now:hover { transform: translateY(-1px); }
 .fa-btns .btn-share-sm:active, .fa-btns .btn-pay-now:active { transform: scale(.96); filter: brightness(.92); }
-.fa-ongkir { flex: 0 0 auto; width: 110px; min-width: 110px; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
-.fa-ongkir .fo-label { font-size: 8.5px; color: var(--text-light); font-weight: 600; display: flex; align-items: center; gap: 3px; }
-.fa-ongkir .fo-label svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.ongkir-input { width: 100%; text-align: right; background: transparent!important; border: none!important; border-bottom: 1.5px dashed var(--border)!important; border-radius: 0!important; padding: 2px 0!important; font-family: var(--font-mono); font-weight: 700; color: var(--primary); font-size: 12px; box-shadow: none!important; }
-.ongkir-input::placeholder { color: var(--text-light); opacity: .6; font-weight: 600; }
 .fa-totals { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
 .fa-totals .ft-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; }
 .fa-totals .ft-label { font-size: 9px; color: var(--text-light); font-weight: 600; white-space: nowrap; flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px; }
@@ -514,7 +408,6 @@ body.pi-mode .price-input { pointer-events: auto!important; background: transpar
 .ro-company p { font-size: 9.5px; color: var(--text-light); margin: 0; line-height: 1.3; }
 .ro-meta-right { text-align: right; flex-shrink: 0; }
 .ro-invno { font-size: 14px; font-weight: 800; color: var(--accent); font-family: var(--font-mono); display: block; margin-bottom: 2px; }
-.ro-date-badge { font-size: 8.5px; background: var(--bg); padding: 2px 6px; border-radius: 4px; color: var(--text); display: inline-block; margin-bottom: 2px; }
 .ro-custinfo { background: var(--bg); padding: 9px 11px; border-radius: 7px; margin-bottom: 12px; border-left: 3px solid var(--accent); font-size: 9.5px; display: flex; flex-direction: column; gap: 3px; }
 .ro-ci-row { display: flex; gap: 7px; align-items: baseline; }
 .ro-ci-label { flex: 0 0 62px; color: var(--text-light); font-weight: 600; }
@@ -647,7 +540,6 @@ body.pi-mode .price-input { pointer-events: auto!important; background: transpar
 .lk-me-item .lk-me-acts { display: flex; gap: 4px; flex-shrink: 0; }
 .lk-me-item .lk-me-acts button { width: 27px; height: 27px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; }
 .lk-me-item .lk-me-acts button svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.lk-me-empty { font-size: 9.5px; color: var(--text-light); font-style: italic; padding: 7px 2px; }
 .lk-auto-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 2px; border-bottom: 1px dashed var(--border); font-size: 10.5px; }
 .lk-auto-row:last-child { border-bottom: none; }
 .lk-auto-row .lk-auto-l { color: var(--accent); font-weight: 600; font-size: 9.5px; }
@@ -743,7 +635,6 @@ body.pi-mode .price-input { pointer-events: auto!important; background: transpar
 .pay-summary .ps-v { font-size: clamp(10px, 3.3vw, 13px); font-weight: 800; font-family: var(--font-mono); color: var(--primary); white-space: nowrap; }
 .pay-summary .ps-v.ok { color: var(--success); }
 .pay-summary .ps-v.warn { color: var(--warning); }
-.ps-v.over { color: var(--danger)!important; font-weight: 800; animation: overPayPulse 1.5s ease-in-out infinite; }
 #payModal .form-group:has(#inputOngkir) { background: linear-gradient(135deg, rgba(5,150,105,.06), rgba(5,150,105,.02)); border: 1.5px solid color-mix(in srgb, var(--success) 30%, var(--border)); border-radius: 9px; padding: 8px 10px; margin-bottom: 8px; transition: all .2s var(--ease); }
 #payModal .form-group:has(#inputOngkir):focus-within { border-color: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 12%, transparent); background: linear-gradient(135deg, rgba(5,150,105,.10), rgba(5,150,105,.04)); }
 #payModal .form-group:has(#inputOngkir) label { color: var(--success); font-weight: 800; letter-spacing: .3px; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
@@ -794,80 +685,6 @@ body.pi-mode .price-input { pointer-events: auto!important; background: transpar
 #invoiceShareStage { box-shadow: 0 18px 50px rgba(0,0,0,.45); border-radius: 4px; overflow: hidden; line-height: 0; width: max-content; max-width: none; margin-inline: auto; }
 
 .accurate-invoice-layout { font-family: 'Inter', sans-serif; color: #0f172a; background: #fff; width: 215.9mm; min-height: 304.8mm; max-width: 215.9mm; padding: 20px 28px 40px; box-sizing: border-box; position: relative; line-height: 1.45; margin: 0 auto; }
-.ac-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; border-bottom: 3px double #1e293b; margin-bottom: 18px; }
-.ac-company { flex: 1; }
-.ac-company-logo { display: flex; align-items: center; gap: 13px; margin-bottom: 4px; }
-.ac-logo-badge { width: 54px; height: 54px; background: linear-gradient(135deg, #1e293b, #334155); color: #fff; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; font-family: 'Space Grotesk', sans-serif; letter-spacing: -1px; }
-.ac-company-text h1 { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; text-transform: uppercase; margin: 0 0 2px; }
-.ac-company-text .ac-tagline { font-size: 10px; font-weight: 700; color: #3b82f6; letter-spacing: 2.4px; text-transform: uppercase; margin-bottom: 4px; }
-.ac-company-text p { font-size: 9.5px; color: #475569; margin: 0; }
-.ac-meta-right { text-align: right; flex-shrink: 0; padding: 10px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 9px; min-width: 230px; }
-.ac-meta-right .ac-doctype { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #1e293b; text-transform: uppercase; margin-bottom: 6px; }
-.ac-invno { font-size: 17px; font-weight: 800; color: #1e293b; font-family: 'JetBrains Mono', monospace; margin-bottom: 5px; }
-.ac-date { font-size: 9.5px; color: #475569; margin: 2px 0; }
-.ac-date b { color: #0f172a; }
-.ac-custinfo { background: linear-gradient(135deg, #eff6ff, #f8fafc); padding: 12px 16px; border-radius: 9px; border-left: 4px solid #3b82f6; margin-bottom: 16px; font-size: 10.5px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; }
-.ac-custinfo div { display: flex; gap: 7px; }
-.ac-custinfo b { color: #475569; min-width: 88px; font-weight: 600; }
-.ac-custinfo b.val { color: #0f172a; font-weight: 700; text-transform: uppercase; }
-.ac-group-block { margin-bottom: 16px; break-inside: avoid; }
-.ac-group-block .ac-table { margin-bottom: 0; }
-.ac-group-title { display: flex; align-items: center; gap: 9px; font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1.6px; color: #1e293b; margin-bottom: 6px; padding: 6px 11px; background: #f1f5f9; border-left: 3px solid #3b82f6; border-radius: 0 6px 6px 0; }
-.ac-group-title .ac-gt-name { text-transform: uppercase; flex-shrink: 0; }
-.ac-group-title .ac-gt-sub { font-family: 'JetBrains Mono', monospace; font-size: 8px; font-weight: 600; letter-spacing: .4px; color: #64748b; }
-.ac-group-title .ac-gt-count { margin-left: auto; flex-shrink: 0; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 0; color: #475569; background: #fff; border: 1px solid #e2e8f0; padding: 2px 8px; border-radius: 20px; }
-.ac-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 10.5px; border: 1px solid #cbd5e1; table-layout: auto; }
-/* Letter Fanfold: Kolom angka nowrap, deskripsi fleksibel */
-.ac-table th:nth-child(1), .ac-table td:nth-child(1) { width: 1%; white-space: nowrap; text-align: center; padding: 6px 4px; }
-.ac-table th:nth-child(2), .ac-table td:nth-child(2) { width: 1%; white-space: nowrap; padding: 6px 6px; }
-.ac-table th:nth-child(3), .ac-table td:nth-child(3) { width: 99%; padding: 6px 8px; }
-.ac-table th:nth-child(4), .ac-table td:nth-child(4) { width: 1%; white-space: nowrap; text-align: right; padding: 6px 6px; }
-.ac-table th:nth-child(5), .ac-table td:nth-child(5) { width: 1%; white-space: nowrap; text-align: right; padding: 6px 6px; }
-.ac-table thead { background: #1e293b; }
-.ac-table th { padding: 9px 9px; font-size: 9px; background: #1e293b; color: #fff; font-weight: 700; text-transform: uppercase; border-right: 1px solid rgba(255,255,255,.12); }
-.ac-table th:last-child { border-right: none; }
-.ac-table td { padding: 8px 9px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #f1f5f9; background: #fff; vertical-align: top; }
-.ac-table td:last-child { border-right: none; }
-.ac-table tbody tr:nth-child(even) td { background: #f8fafc; }
-.ac-table .r { text-align: right; font-family: 'JetBrains Mono', monospace; }
-.ac-table .c { text-align: center; }
-.ac-footer { display: flex; justify-content: space-between; gap: 18px; margin-top: 8px; }
-.ac-bank-info { flex: 0 0 44%; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 9px; padding: 13px 15px; font-size: 10px; }
-.ac-bank-info h4 { font-size: 10px; margin: 0 0 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; display: flex; align-items: center; gap: 7px; color: #1e293b; }
-.ac-bank-info h4::before { content: ''; display: inline-block; width: 4px; height: 14px; background: #3b82f6; border-radius: 2px; }
-.ac-bank-info .bank-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #e2e8f0; }
-.ac-bank-info .bank-row:last-of-type { border-bottom: none; }
-.ac-bank-info .bank-row b { font-family: 'JetBrains Mono', monospace; color: #0f172a; }
-.ac-terbilang { margin-top: 11px; padding: 9px 12px; background: #fff; border: 1px dashed #cbd5e1; border-radius: 7px; font-size: 10px; }
-.ac-terbilang b { color: #0f172a; text-transform: uppercase; margin-right: 6px; }
-.ac-paid-block { margin-top: 10px; border-top: 1px dashed #cbd5e1; padding-top: 8px; }
-.ac-paid-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 10px; }
-.ac-paid-row.cash { color: #059669; }
-.ac-paid-row.trf { color: #2563eb; }
-.ac-paid-row b { font-family: 'JetBrains Mono', monospace; }
-.ac-summary-box { flex: 0 0 40%; background: #fff; border: 2px solid #1e293b; border-radius: 9px; padding: 13px 15px 0; align-self: flex-start; position: relative; display: flex; flex-direction: column; overflow: hidden; }
-.ac-srow { display: flex; justify-content: space-between; padding: 5px 0; font-size: 11px; border-bottom: 1px dashed #e2e8f0; }
-.ac-srow .ac-srow-label { color: #475569; }
-.ac-srow .ac-srow-value { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
-.ac-srow.disc { background: #fef2f2; margin: 0 -15px; padding: 5px 15px; border-bottom: 1px solid #fecaca; }
-.ac-srow.disc .ac-srow-label, .ac-srow.disc .ac-srow-value { color: #dc2626; }
-.ac-srow.ongkir .ac-srow-label, .ac-srow.ongkir .ac-srow-value { color: #0f172a; font-weight: 700; }
-.ac-srow.total { background: linear-gradient(135deg, #1e293b, #334155); color: #fff; margin: 9px -15px 0; padding: 13px 15px; border-bottom: none; }
-.ac-srow.total .ac-srow-label { color: #fff; font-weight: 800; font-size: 13px; letter-spacing: .4px; }
-.ac-srow.total .ac-srow-value { color: #fff; font-weight: 800; font-size: 16px; }
-.ac-ongkir-detail { margin: 12px 0 0; padding: 10px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 7px; font-size: 10px; }
-.ac-ongkir-detail .ac-od-title { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #64748b; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
-.ac-ongkir-detail .ac-od-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dotted #e2e8f0; }
-.ac-ongkir-detail .ac-od-row:last-child { border-bottom: none; }
-.ac-ongkir-detail .ac-od-label { color: #475569; font-weight: 600; }
-.ac-ongkir-detail .ac-od-value { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #0f172a; }
-.ac-stamp { margin: 14px 0 14px; padding: 10px 22px; border: 2.5px solid currentColor; border-radius: 8px; font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; text-align: center; align-self: center; transform: rotate(-2deg); }
-.ac-stamp.lunas { color: #15803d; }
-.ac-stamp.belum { color: #b45309; }
-.ac-foot-note { position: absolute; left: 38px; bottom: 14px; font-size: 8.5px; color: #94a3b8; }
-.ac-fallback-note { margin: 18px 38px; padding: 12px 14px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #b91c1c; font-size: 11px; }
-.ac-fallback-note b { display: block; margin-bottom: 4px; }
-.ac-fallback-note pre { margin: 6px 0 0; white-space: pre-wrap; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #7f1d1d; }
 
 /* =========================================
    10. CONVERTER VIEW
@@ -1030,31 +847,6 @@ body:not(.show-bottomnav) .vb-banner { bottom: 14px; }
 .vb-banner .vb-b-btn { flex-shrink: 0; border: 0; border-radius: 10px; padding: 8px 12px; font-size: 10px; font-weight: 800; cursor: pointer; color: #fff; background: linear-gradient(135deg, var(--warning), #d97706); }
 .vb-banner .vb-b-x { flex-shrink: 0; border: 0; background: transparent; color: var(--text-light); font-size: 14px; cursor: pointer; }
 
-.wl-row, .theme-row { display: flex; align-items: center; gap: 9px; cursor: pointer; }
-.wl-row .wl-ico, .theme-row .theme-ico { font-size: 13px; width: 18px; text-align: center; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
-.wl-ico svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.theme-row .theme-ico { color: #f59e0b; transition: transform .25s var(--ease), filter .25s var(--ease); }
-.theme-row.dark .theme-ico { color: #fbbf24; filter: drop-shadow(0 0 6px rgba(251,191,36,.45)); }
-.theme-row:hover .theme-ico { transform: scale(1.18) rotate(8deg); }
-.theme-row .theme-ico svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.wl-ico { display: inline-flex; align-items: center; justify-content: center; color: var(--text-light); transition: color .25s var(--ease); }
-.wl-ico svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: color .25s var(--ease), filter .3s var(--ease), transform .25s var(--ease); }
-.wl-row.on .wl-ico { color: #f59e0b; filter: drop-shadow(0 0 5px rgba(245,158,11,.55)); }
-.wl-row:hover .wl-ico { transform: scale(1.14) rotate(-7deg); }
-.wl-row.on:hover .wl-ico { filter: drop-shadow(0 0 8px rgba(245,158,11,.8)); }
-.wl-row .wl-lab, .theme-row .theme-lab { flex: 1; min-width: 0; }
-.theme-lab { display: flex; flex-direction: column; gap: 1px; line-height: 1.2; }
-.theme-lab-main { font-weight: 600; }
-.theme-lab-sub { font-size: 8.5px; color: var(--text-light); font-weight: 600; letter-spacing: .2px; opacity: .9; }
-.wl-st { font-size: 8px; font-weight: 800; color: var(--text-light); min-width: 26px; text-align: right; font-family: var(--font-mono); }
-.wl-sw, .theme-sw { position: relative; flex-shrink: 0; width: 38px; height: 21px; border-radius: 20px; background: var(--border); transition: background .28s var(--ease); box-shadow: inset 0 1px 3px rgba(0,0,0,.28); }
-.wl-sw::after, .theme-sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); transition: transform .28s var(--ease); }
-.wl-row.on .wl-sw { background: linear-gradient(135deg, var(--success), #059669); }
-.wl-row.on .wl-sw::after { transform: translateX(17px); }
-.wl-row.on .wl-st { color: var(--success); }
-.theme-row.dark .theme-sw { background: linear-gradient(135deg, var(--accent), #6366f1); }
-.theme-row.dark .theme-sw::after { transform: translateX(17px); }
-
 /* =========================================
    12. ANIMATIONS
    ========================================= */
@@ -1073,7 +865,6 @@ body:not(.show-bottomnav) .vb-banner { bottom: 14px; }
 @keyframes navUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes piSnip { 0%, 100% { transform: rotate(0) scale(1); } 18% { transform: rotate(-9deg) scale(1.1); } 36% { transform: rotate(7deg) scale(1.05); } 54% { transform: rotate(0) scale(1); } }
 @keyframes piGlow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--pi) 48%, transparent); } 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
-@keyframes overPayPulse { 0%, 100% { opacity: 1; } 50% { opacity: .6; } }
 @keyframes spDrift1 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(6vmax, 4vmax) scale(1.12); } }
 @keyframes spDrift2 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-5vmax, -3vmax) scale(1.14); } }
 @keyframes spIn { from { opacity: 0; transform: translateY(14px) scale(.95); } to { opacity: 1; transform: none; } }
@@ -1092,7 +883,6 @@ body:not(.show-bottomnav) .vb-banner { bottom: 14px; }
 .anim-in { animation: viewIn .3s var(--ease); }
 .list-anim { animation: listIn .25s var(--ease); }
 .list-anim-fade { animation: listFade .22s ease; }
-.hidden-cell { display: none!important; }
 
 #page-input.page { overflow: hidden; }
 #page-input .trans-header { position: sticky; top: 0; background: var(--surface); z-index: 40; }
@@ -1141,14 +931,12 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
     .inv-date-display { font-size: 9px; padding: 4px 10px; min-width: 120px; }
     .fa-btns { width: 110px; min-width: 110px; }
     .fa-btns .btn-share-sm, .fa-btns .btn-pay-now { font-size: 9px; gap: 4px; }
-    .fa-ongkir { width: 90px; min-width: 90px; }
     .fa-totals .ft-grand .ft-value { font-size: 16px; }
 }
 
 @media(max-width:380px) {
     .fa-btns { width: 100px; min-width: 100px; }
     .fa-btns .btn-share-sm, .fa-btns .btn-pay-now { font-size: 8.5px; }
-    .fa-ongkir { width: 80px; min-width: 80px; }
     .ongkir-input { font-size: 11px; }
     .fa-totals .ft-grand .ft-value { font-size: 14px; }
 }
@@ -1166,7 +954,6 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
     .footer-action-row { flex-wrap: wrap; }
     .fa-btns { width: 100%; flex-direction: row; gap: 6px; }
     .fa-btns .btn-share-sm, .fa-btns .btn-pay-now { flex: 1; }
-    .fa-ongkir { flex: 1 1 auto; width: auto; }
     .fa-totals { flex: 1 1 100%; }
 }
 
@@ -1224,7 +1011,7 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v7.3</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v7.4</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -1232,7 +1019,6 @@ body.order-mode .fa-totals .ft-grand .ft-label, body.order-mode .fa-totals .ft-g
 </div>
 <noscript><div style="position:fixed;inset:0;background:#080b14;color:#e2e8f0;display:flex;align-items:center;justify-content:center;padding:30px;text-align:center;font-family:'Space Grotesk',system-ui,sans-serif;z-index:999999"><div style="max-width:320px"><svg width="72" height="72" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 8px 18px rgba(0,0,0,.4))"><defs><linearGradient id="nsg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b82f6"/><stop offset="1" stop-color="#16a34a"/></linearGradient></defs><path d="M32 2.5 L57.5 17 V47 L32 61.5 L6.5 47 V17 Z" fill="url(#nsg)"/><text x="32" y="41" text-anchor="middle" font-size="23" font-weight="700" fill="#fff" letter-spacing="-1.5">BL</text></svg><div style="font-size:20px;font-weight:700;margin:14px 0 4px">PT. BIOLI LESTARI</div><p style="font-size:12.5px;line-height:1.6;color:#94a3b8;margin:0">JavaScript nonaktif. Aktifkan JavaScript di pengaturan browser untuk menjalankan sistem transaksi.</p></div></div></noscript>
 <div id="popupOverlay" class="popup-overlay" onclick="if(event.target===this)handlePopupBtn('__close__')"><div class="popup-card"><div class="popup-icon-wrapper"><div class="popup-icon"><svg class="ei"><use href="#icon-alert"/></svg></div></div><div class="popup-title" id="popupTitle">Informasi</div><div class="popup-message" id="popupMsg"></div><div class="popup-btns" id="popupBtns"></div></div></div>
-<input type="file" id="importFileInput" style="display:none" accept=".json,.xlsx,.xls" onchange="handleFileImport(this)">
 <input type="file" id="restoreFileInput" style="display:none" accept=".json" onchange="handleRestoreFile(this)">
 <div class="container" id="mainApp">
   <div id="page-input" class="page active">
@@ -1747,7 +1533,6 @@ function renderTransMenu(){
   h+='<div class="dropdown-item'+(locked?' locked':'')+'" onclick="'+(locked?'lockedNav()':'menuSwitchMode(\'retur\')')+'"><svg><use href="#icon-return"/></svg> Retur'+(locked?lk:'')+'</div>';
   h+='<div class="tm-divider"></div>';
   h+='<div class="tm-label">Tampilan &amp; Perangkat</div>';
-  h+='<div class="dropdown-item theme-row '+(isDark?'dark':'')+'" onclick="toggleTheme()"><span class="theme-ico"><svg><use href="#'+(isDark?'icon-moon':'icon-sun')+'"/></svg></span><span class="theme-lab"><span class="theme-lab-main">'+(isDark?'Mode Gelap':'Mode Terang')+'</span><span class="theme-lab-sub">'+(isDark?'\u2600 ketuk untuk terang':'\uD83C\uDF19 ketuk untuk gelap')+'</span></span><span class="theme-sw"></span></div>';
   h+='<div id="wlSlot"></div>';
   h+='<div id="vbSlot"></div>';
   h+='<div class="tm-divider"></div>';
@@ -1765,8 +1550,8 @@ function renderTransMenu(){
   if(typeof vb_injectMenuRow==='function')vb_injectMenuRow();
 }
 function toggleModeMenu(){renderTransMenu();var m=document.getElementById('modeMenu');m.classList.toggle('open');if(m.classList.contains('open')&&typeof vb_check==='function')vb_check(false)}
-function toggleCustPageMenu(){if(!isUnlocked){alertWarning('Login dulu untuk akses menu customer!');return}const menu=document.getElementById('custPageMenu');menu.innerHTML='<div class="tm-label">Menu Utama</div><div class="dropdown-item" onclick="custMenuAction(\'export\')"><svg><use href="#icon-download"/></svg> Ekspor Data</div><div class="dropdown-item" onclick="custMenuAction(\'import\')"><svg><use href="#icon-upload"/></svg> Impor Data</div><div class="dropdown-item" onclick="custMenuAction(\'format\')"><svg><use href="#icon-wrench"/></svg> JSON Converter</div><div class="tm-divider"></div><div class="tm-label">Reset & Hapus Data</div><div class="dropdown-item danger" onclick="custMenuAction(\'hapusBarang\')"><svg><use href="#icon-trash"/></svg> Hapus Semua Barang</div><div class="dropdown-item danger" onclick="custMenuAction(\'hapusCustomer\')"><svg><use href="#icon-trash"/></svg> Hapus Semua Customer</div><div class="dropdown-item danger" onclick="custMenuAction(\'resetFaktur\')"><svg><use href="#icon-trash"/></svg> Reset Data Faktur</div><div class="dropdown-item danger" onclick="custMenuAction(\'resetStok\')"><svg><use href="#icon-trash"/></svg> Reset Data Stok Barang</div>';menu.classList.toggle('open')}
-function custMenuAction(action){document.getElementById('custPageMenu').classList.remove('open');if(!requireLogin())return;switch(action){case 'import':showImportMenu();break;case 'export':showExportMenu();break;case 'format':openConverterView();break;case 'resetFaktur':confirmDeleteAllHistory();break;case 'resetStok':resetAllStockFromMenu();break;case 'hapusCustomer':confirmDeleteAllCustomers();break;case 'hapusBarang':confirmDeleteAllItems();break}}
+function toggleCustPageMenu(){if(!isUnlocked){alertWarning('Login dulu untuk akses menu customer!');return}const menu=document.getElementById('custPageMenu');menu.innerHTML='<div class="tm-label">Menu Utama</div><div class="dropdown-item" onclick="custMenuAction(\'format\')"><svg><use href="#icon-wrench"/></svg> JSON Converter</div><div class="tm-divider"></div><div class="tm-label">Reset & Hapus Data</div><div class="dropdown-item danger" onclick="custMenuAction(\'hapusBarang\')"><svg><use href="#icon-trash"/></svg> Hapus Semua Barang</div><div class="dropdown-item danger" onclick="custMenuAction(\'hapusCustomer\')"><svg><use href="#icon-trash"/></svg> Hapus Semua Customer</div><div class="dropdown-item danger" onclick="custMenuAction(\'resetFaktur\')"><svg><use href="#icon-trash"/></svg> Reset Data Faktur</div><div class="dropdown-item danger" onclick="custMenuAction(\'resetStok\')"><svg><use href="#icon-trash"/></svg> Reset Data Stok Barang</div>';menu.classList.toggle('open')}
+function custMenuAction(action){document.getElementById('custPageMenu').classList.remove('open');if(!requireLogin())return;switch(action){case 'format':openConverterView();break;case 'resetFaktur':confirmDeleteAllHistory();break;case 'resetStok':resetAllStockFromMenu();break;case 'hapusCustomer':confirmDeleteAllCustomers();break;case 'hapusBarang':confirmDeleteAllItems();break}}
 function confirmDeleteAllCustomers(){showDangerConfirm('Hapus <b>SEMUA</b> data customer?<br><br>Tindakan ini tidak dapat dibatalkan!',c=>{if(!c)return;customers=[];localStorage.setItem('masterCust',JSON.stringify(customers));renderTable('cust');alertSuccess('Semua data customer berhasil dihapus!')})}
 function confirmDeleteAllItems(){showDangerConfirm('Hapus <b>SEMUA</b> data barang + stok?<br><br>Tindakan ini tidak dapat dibatalkan!',c=>{if(!c)return;items=[];stockData={};stockLog=[];localStorage.setItem('masterItems',JSON.stringify(items));saveStockData();renderTable('item');renderStockTable();updateCategoryFilterDropdown('item');updateCategoryFilterDropdown('stock');alertSuccess('Semua data barang berhasil dihapus!')})}
 function lockedNav(){closeAllMenus();showLoginPopup()}
@@ -1922,7 +1707,6 @@ function saveOrderTransaction(){
     resetTransactionUI();
   });
 }
-function savePiTransaction(){if(!currentCustomer)return alertWarning('Pilih customer!');const rows=[];document.querySelectorAll('#inputRows tr').forEach(tr=>{const desc=descOf(tr);const qty=parseFloat(tr.querySelector('.qty-input').value)||0;const price=parseMoney(tr.querySelector('.price-input').value);if(desc&&qty>0)rows.push({desc,qty,price,total:qty*price,cat:tr.querySelector('.cat-input').value||''})});if(!rows.length)return alertWarning('Tidak ada item!');const rt=rows.reduce((s,r)=>s+r.total,0);showConfirm('Simpan PI senilai <b>'+fmtCurrencyFull(rt)+'</b>?',cf=>{if(!cf)return;const invNo=consumeInvNo('pi');if(!invNo)return invDupWarning();const ptx={invNo,date:new Date().toISOString(),cust:Object.assign({},currentCustomer),rows,subTotal:rt,discTotal:0,specialDiscAmount:0,ongkir:0,grandTotal:rt,finalGrandTotal:rt,isRetur:false,isPi:true,isCash:false,isTransfer:false,isOrder:false,isCancelled:false,originalInvNo:null,_source:'manual'};const hist=JSON.parse(localStorage.getItem('txHistory'))||[];hist.unshift(ptx);try{localStorage.setItem('txHistory',JSON.stringify(hist))}catch(e){alertDanger('Storage penuh!')}rows.forEach(r=>{const item=findItemByDesc(r.desc);if(item){stockData[item.name]=(stockData[item.name]||0)+r.qty;stockLog.unshift({item:item.name,type:'in',qty:r.qty,note:'PI: '+invNo,date:new Date().toISOString()})}});saveStockData();syncToActiveLKReport('invoices',{id:ptx.invNo,amount:rt,desc:ptx.invNo+' (PI)',date:ptx.date});alertSuccess('PI Tersimpan! <b>'+invNo+'</b>');resetTransactionUI()})}
 function saveReturFromTable(){if(!returSourceTx)return alertWarning('Pilih faktur asal!');const rows=[];document.querySelectorAll('#inputRows tr').forEach(tr=>{const desc=descOf(tr);const qty=parseFloat(tr.querySelector('.qty-input').value)||0;const price=parseMoney(tr.querySelector('.price-input').value);if(desc&&qty>0)rows.push({desc,qty,price,total:qty*price,cat:tr.querySelector('.cat-input').value||''})});if(!rows.length)return alertWarning('Tidak ada item retur!');const rt=rows.reduce((s,r)=>s+r.total,0);showDangerConfirm('Proses retur senilai <b>'+fmtCurrencyFull(rt)+'</b>?',cf=>{if(!cf)return;const invNo=consumeInvNo('retur');if(!invNo)return invDupWarning();const rtx={invNo,date:new Date().toISOString(),cust:Object.assign({},returSourceTx.cust||{}),rows,subTotal:rt,discTotal:0,specialDiscAmount:0,ongkir:0,grandTotal:rt,finalGrandTotal:rt,isRetur:true,isPi:false,isCash:false,isTransfer:false,isOrder:false,isCancelled:false,originalInvNo:returSourceTx.invNo,_source:'manual'};const hist=JSON.parse(localStorage.getItem('txHistory'))||[];hist.unshift(rtx);try{localStorage.setItem('txHistory',JSON.stringify(hist))}catch(e){alertDanger('Storage penuh!')}rows.forEach(r=>{const item=findItemByDesc(r.desc);if(item){stockData[item.name]=(stockData[item.name]||0)+r.qty;stockLog.unshift({item:item.name,type:'in',qty:r.qty,note:'Retur: '+invNo,date:new Date().toISOString()})}});saveStockData();alertSuccess('Retur berhasil! <b>'+invNo+'</b>');returSourceTx=null;modeStates.retur.sourceTx=null;modeStates.retur.rows=[];resetTransactionUI()})}
 function resetTransactionUI(){currentCustomer=null;returSourceTx=null;isPiMode=false;updateCodeInput('');document.getElementById('nameDisplay').value='';document.getElementById('infoSales').innerText='-';document.getElementById('custInfoBox').classList.remove('visible');document.body.classList.remove('pi-mode');document.getElementById('piPriceHint').style.display='none';modeStates={nota:{rows:[],customer:null,invEdited:false,ongkir:0},retur:{rows:[],customer:null,invEdited:false,sourceTx:null,ongkir:0},order:{rows:[],customer:null,invEdited:false,ongkir:0},pi:{rows:[],customer:null,invEdited:false,ongkir:0}};document.getElementById('inputRows').innerHTML='';for(let i=0;i<FIXED_ROWS;i++)addNewRowDOM();document.getElementById('paySpecialType').value='percent';setMoneyDec('paySpecialValue',0);payCashUserEdited=false;payRecSubVal=0;payRecDiscVal=0;payRecOngkirVal=0;currentPayGrand=0;var _por=document.getElementById('payRecOngkirRow');if(_por)_por.style.display='none';var _oi=document.getElementById('inputOngkir');if(_oi)_oi.value='';setInvNumPreview();updateInvDateDisplay();calculateAll();isSortedByCategory=false;originalRowOrder=null;updatePiModeUI()}
 function resetTransaction(){showConfirm('Reset transaksi saat ini?',y=>{if(y)resetTransactionUI()})}
@@ -2069,9 +1853,6 @@ function shareHistoryTx(gi){
   previewInvoice(tx);
 }
 
-function fallbackCopy(t){const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;left:-9999px';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');alertSuccess('Disalin!')}catch(e){alertDanger('Gagal menyalin')}document.body.removeChild(ta)}
-function sortRowsByCategory(){if(currentMode==='order')return;const tbody=document.getElementById('inputRows'),rows=[...tbody.querySelectorAll('tr')],filled=[],empty=[];rows.forEach(tr=>{const desc=descOf(tr);if(desc)filled.push({tr,cat:tr.querySelector('.cat-input').value.trim().toUpperCase()||'UMUM'});else empty.push(tr)});if(!filled.length)return alertWarning('Tidak ada item untuk diurutkan');if(!isSortedByCategory){originalRowOrder=filled.map(r=>r.tr);filled.sort((a,b)=>a.cat.localeCompare(b.cat));isSortedByCategory=true;document.getElementById('btnSecondaryAction').classList.add('active');document.getElementById('btnSecondaryAction').innerHTML='<svg><use href="#icon-check"/></svg> Terurut'}else{if(originalRowOrder)filled.sort((a,b)=>originalRowOrder.indexOf(a.tr)-originalRowOrder.indexOf(b.tr));isSortedByCategory=false;document.getElementById('btnSecondaryAction').classList.remove('active');document.getElementById('btnSecondaryAction').innerHTML='<svg><use href="#icon-sort"/></svg> Filter'}tbody.innerHTML='';filled.forEach(i=>tbody.appendChild(i.tr));empty.forEach(tr=>tbody.appendChild(tr));renumberAllRows()}
-
 function generateFinancialReport(){const ha=JSON.parse(localStorage.getItem('txHistory'))||[];let tS=0,sC=0,tR=0,rC=0,tCa=0,caC=0,tTr=0,trC=0;let lunasAmt=0,lunasCnt=0,piutangAmt=0,piutangCnt=0;const sSC={},oSC={};ha.forEach(tx=>{if(tx.isCancelled)return;if(tx.isRetur){tR+=(tx.finalGrandTotal||tx.grandTotal||0);rC++}else if(tx.isOrder){(tx.rows||[]).forEach(r=>{const im=findItemByDesc(r.desc),sc=im?(im.subCat||'UMUM'):(r.subCat||'UMUM');if(!oSC[sc])oSC[sc]={qty:0,total:0};oSC[sc].qty+=parseFloat(r.qty)||0;oSC[sc].total+=parseMoney(r.total)||0})}else if(!tx.isPi){const gt=tx.finalGrandTotal!==undefined?tx.finalGrandTotal:(tx.grandTotal||0);tS+=gt;sC++;if(tx.isCash){tCa+=gt;caC++}if(tx.isTransfer){tTr+=gt;trC++}const rem=getRemainingBalance(tx,ha);if(rem<=0){lunasAmt+=gt;lunasCnt++}else{piutangAmt+=rem;piutangCnt++}(tx.rows||[]).forEach(r=>{const im=findItemByDesc(r.desc),sc=im?(im.subCat||'UMUM'):(r.subCat||'UMUM');if(!sSC[sc])sSC[sc]={qty:0,total:0};sSC[sc].qty+=parseFloat(r.qty)||0;sSC[sc].total+=parseMoney(r.total)||0})}});document.getElementById('psgLunas').textContent=fmtCurrency(lunasAmt);document.getElementById('psgLunasCnt').textContent=lunasCnt+' nota';document.getElementById('psgPiutang').textContent=fmtCurrency(piutangAmt);document.getElementById('psgPiutangCnt').textContent=piutangCnt+' nota';document.getElementById('psgTransfer').textContent=fmtCurrency(tTr);document.getElementById('psgTransferCnt').textContent=trC+' trx';document.getElementById('psgRetur').textContent=fmtCurrency(tR);document.getElementById('psgReturCnt').textContent=rC+' trx';document.getElementById('rptTotalSales').textContent=fmtCurrency(tS);document.getElementById('rptSalesCount').textContent=sC+' trx';document.getElementById('rptTotalCash').textContent=fmtCurrency(tCa);document.getElementById('rptCashCount').textContent=caC+' trx';const fillTable=(sel,data)=>{const tb=document.querySelector(sel+' tbody');let h='';Object.keys(data).sort().forEach(k=>h+='<tr><td>'+escapeHtml(k)+'</td><td class="r">'+data[k].qty+'</td><td class="r">'+fmtCurrency(data[k].total)+'</td></tr>');tb.innerHTML=E(h)||'<tr><td colspan="3" style="text-align:center;color:var(--text-light);padding:12px">Belum ada data</td></tr>'};fillTable('#rptSalesBySubCat',sSC);fillTable('#rptOrderBySubCat',oSC)}
 function viewActiveLKReport(){if(activeLKReportId)viewLKReportDetail(activeLKReportId)}
 function renderLKHistory(){const c=document.getElementById('lkHistoryList');if(!lkReports.length){c.innerHTML=E('<div class="lk-empty-state"><svg class="ei lg"><use href="#icon-plane"/></svg> Belum ada laporan</div>');return}c.innerHTML=E(lkReports.map(r=>{const n=r.syncedData?(r.syncedData.invoices.length+r.syncedData.payments.length+r.syncedData.stock.length):0;return '<div class="lk-item" style="cursor:pointer" onclick="viewLKReportDetail(\''+r.id+'\')"><div class="lk-item-info"><div class="lk-item-title"><svg class="ei"><use href="#icon-plane"/></svg> '+escapeHtml(r.destination)+' '+(r.isActive?'<span class="lk-badge" style="background:var(--success);color:#fff">AKTIF</span>':'')+'</div><div class="lk-item-sub">'+fmtDateShort(r.departDate)+' - '+fmtDateShort(r.returnDate)+' \u2022 '+n+' data</div></div><button class="btn-delete-lk" onclick="event.stopPropagation();deleteLKReport(\''+r.id+'\')"><svg width="12" height="12" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><use href="#icon-trash"/></svg></button></div>'}).join(''))}
@@ -2119,7 +1900,6 @@ function handleHistoryCardClick(gi){multiPayMode?toggleHistSelection(gi):openHis
 function openHistoryDetail(gi){currentDetailIdx=gi;renderHistoryDetail(gi);document.getElementById('historyListView').style.display='none';document.getElementById('historyDetailView').style.display='block';animateIn(document.getElementById('historyDetailView'));scrollTo(0,0);const pos=filteredHistoryGIs.indexOf(gi),tot=filteredHistoryGIs.length;document.getElementById('historyInfo').textContent='Nota '+(pos>=0?pos+1:'?')+' / '+tot;document.getElementById('histPrevBtn').disabled=pos<=0;document.getElementById('histNextBtn').disabled=pos<0||pos>=tot-1}
 function closeHistoryDetail(){currentDetailIdx=-1;document.getElementById('historyDetailView').style.display='none';document.getElementById('historyListView').style.display='block';animateIn(document.getElementById('historyListView'));loadHistory()}
 function renderHistoryDetail(gi){const ha=JSON.parse(localStorage.getItem('txHistory'))||[],tx=ha[gi];if(!tx)return closeHistoryDetail();const td=new Date(tx.date),subTotal=tx.subTotal||0,finalGT=tx.finalGrandTotal!==undefined?tx.finalGrandTotal:(tx.grandTotal||0),isCash=tx.isCash,specialAmt=tx.specialDiscAmount||0,ongkir=getOngkir(tx),rem=getRemainingBalance(tx,ha),isImp=isImportedTx(tx);const discDetails=[];if(tx.rows&&tx.cust&&tx.cust.disc)tx.rows.forEach(r=>{const it=findItemByDesc(r.desc),rc=it?it.cat:(r.cat||'');if(rc&&tx.cust.disc[rc]){const dp=tx.cust.disc[rc];if(dp>0){const da=(r.total||0)*dp/100;const ex=discDetails.find(d=>d.cat===rc);if(ex)ex.amount+=da;else discDetails.push({cat:rc,pct:dp,amount:da})}}});const cancelBadge=tx.isCancelled?'<span class="status-batal"><svg class="ei"><use href="#icon-x"/></svg> Batal</span>':'';let statusBadge='';if(!tx.isCancelled){if(tx.isRetur)statusBadge='<span class="tx-badge tx-badge-retur"><svg class="ei"><use href="#icon-return"/></svg>RETUR</span>';else if(tx.isPi)statusBadge='<span class="tx-badge tx-badge-pi"><svg class="ei"><use href="#icon-scissors"/></svg>PI</span>';else if(tx.isOrder)statusBadge='<span class="tx-badge tx-badge-order"><svg class="ei"><use href="#icon-clipboard"/></svg>ORDER</span>';else if(isImp)statusBadge=tx.region==='BDG'?'<span class="tx-badge tx-badge-bdg"><svg class="ei"><use href="#icon-building"/></svg>BDG</span>':'<span class="tx-badge tx-badge-jkt"><svg class="ei"><use href="#icon-map-pin"/></svg>JKT</span>';else if(isCash&&rem<=0)statusBadge='<span class="tx-badge tx-badge-lunas"><svg class="ei"><use href="#icon-check"/></svg>LUNAS</span>';else if(isCash)statusBadge='<span class="tx-badge tx-badge-cash"><svg class="ei"><use href="#icon-wallet"/></svg>CASH</span>';else statusBadge='<span class="tx-badge tx-badge-reg"><svg class="ei"><use href="#icon-file"/></svg>REG</span>'}let h='<div class="inv-detail-wrap"><div class="inv-detail-bar"><div class="inv-detail-left"><div class="inv-detail-badges">'+cancelBadge+statusBadge+'</div></div><div class="inv-detail-actions">';h+='<button class="inv-act-btn" onclick="shareHistoryInvoice('+gi+')"><svg><use href="#icon-share"/></svg> Share</button>';if(!tx.isCancelled&&!tx.isRetur&&!tx.isOrder&&!tx.isPi&&rem>0)h+='<button class="inv-act-btn pay" onclick="openPartialPayment('+gi+')"><svg style="stroke:#fff"><use href="#icon-dollar"/></svg> Bayar</button>';if(!tx.isCancelled&&!tx.isRetur&&!tx.isPi)h+='<button class="inv-act-btn cancel" onclick="cancelTransaction('+gi+')"><svg><use href="#icon-x"/></svg> Batal</button>';h+='<button class="inv-act-btn" onclick="closeHistoryDetail()"><svg><use href="#icon-chevron-left"/></svg> Kembali</button></div></div>';h+='<div class="ro-body"><div class="ro-head"><div class="ro-company"><h2>PT. BIOLI LESTARI</h2><p>Perum. TKK Blok P1 No. 7 \u2022 Bandung</p></div><div class="ro-meta-right"><span class="ro-invno">'+escapeHtml(tx.invNo)+'</span><span class="ro-date-badge"><svg class="ei"><use href="#icon-calendar"/></svg> '+fmtDateShort(tx.date)+'</span></div></div>';h+='<div class="ro-custinfo"><div class="ro-ci-row"><span class="ro-ci-label">Kepada</span><span class="ro-ci-val">'+escapeHtml(tx.cust?tx.cust.name:'-')+'</span></div><div class="ro-ci-row"><span class="ro-ci-label">Kode</span><span class="ro-ci-val">'+escapeHtml(tx.cust?tx.cust.code:'-')+'</span></div>'+(tx.cust&&tx.cust.sales?'<div class="ro-ci-row"><span class="ro-ci-label">Sales</span><span class="ro-ci-val">'+escapeHtml(tx.cust.sales)+'</span></div>':'')+'</div>';h+='<table class="ro-table"><thead><tr><th class="c">QTY</th><th>KODE</th><th class="r">HARGA</th><th class="r">TOTAL</th></tr></thead><tbody>';(tx.rows||[]).forEach(r=>{const im=findItemByDesc(r.desc);let code=im?(im.code||''):r.desc||'-';h+='<tr><td class="c">'+r.qty+'</td><td style="font-family:var(--font-mono);font-size:10px">'+escapeHtml(code)+'</td><td class="r">'+(parseMoney(r.price)>0?fmtCurrencyFull(parseMoney(r.price)):'')+'</td><td class="r">'+(parseMoney(r.total)>0?fmtCurrencyFull(parseMoney(r.total)):'')+'</td></tr>'});h+='</tbody></table>';h+='<div class="ro-summary"><div class="ro-summary-box">';h+='<div class="ro-sum-group"><div class="ro-sum-head">Ringkasan Harga</div>';h+='<div class="ro-srow"><span class="ro-srow-label">Subtotal</span><span class="ro-srow-value">'+fmtCurrencyFull(subTotal)+'</span></div>';discDetails.forEach(d=>{h+='<div class="ro-srow disc"><span class="ro-srow-label"><svg class="ei"><use href="#icon-tag"/></svg> Diskon '+escapeHtml(d.cat)+' ('+d.pct+'%)</span><span class="ro-srow-value">- '+fmtCurrencyFull(d.amount)+'</span></div>'});if(specialAmt>0)h+='<div class="ro-srow disc"><span class="ro-srow-label"><svg class="ei"><use href="#icon-scissors"/></svg> CMM</span><span class="ro-srow-value">- '+fmtCurrencyFull(specialAmt)+'</span></div>';if(ongkir>0)h+='<div class="ro-srow ro-ongkir-row"><span class="ro-srow-label"><svg class="ei"><use href="#icon-truck"/></svg> Ongkos Kirim</span><span class="ro-srow-value">'+fmtCurrencyFull(ongkir)+'</span></div>';h+='<div class="ro-srow total"><span class="ro-srow-label">Grand Total</span><span class="ro-srow-value">'+fmtCurrencyFull(finalGT)+'</span></div>';h+='</div>';if(!tx.isRetur&&!tx.isOrder&&!tx.isPi){let totCash=0,totTrf=0;(tx.payments||[]).forEach(p=>{totCash+=payCashOf(p);totTrf+=payTransferOf(p)});h+='<div class="ro-sum-group ro-sum-pay"><div class="ro-sum-head">Status Pembayaran</div>';if(totCash>0)h+='<div class="ro-srow ro-pay-row cash"><span class="ro-srow-label"><svg class="ei"><use href="#icon-wallet"/></svg> Cash</span><span class="ro-srow-value">'+fmtCurrencyFull(totCash)+'</span></div>';if(totTrf>0)h+='<div class="ro-srow ro-pay-row trf"><span class="ro-srow-label"><svg class="ei"><use href="#icon-bank"/></svg> Transfer</span><span class="ro-srow-value">'+fmtCurrencyFull(totTrf)+'</span></div>';if(totCash<=0&&totTrf<=0)h+='<div class="ro-srow"><span class="ro-srow-label">Pembayaran</span><span class="ro-srow-value" style="color:var(--text-light)">Belum ada</span></div>';var stCls=rem<=0?'lunas':'belum';var stLbl=rem<=0?'<svg class="ei"><use href="#icon-check-circle"/></svg> LUNAS':'<svg class="ei"><use href="#icon-clock"/></svg> SISA TAGIHAN';h+='<div class="ro-status-line '+stCls+'"><span class="ro-st-l">'+stLbl+'</span><span class="ro-st-v">'+fmtCurrencyFull(rem)+'</span></div>';h+='</div>'}h+='</div></div>';h+='</div></div>';document.getElementById('invoiceDetailContent').innerHTML=E(h)}
-function cancelTransaction(idx){const ha=JSON.parse(localStorage.getItem('txHistory'))||[],tx=ha[idx];if(!tx)return;showDangerConfirm('Batalkan <b>'+escapeHtml(tx.invNo)+'</b>?',cf=>{if(!cf)return;tx.isCancelled=true;ha[idx]=tx;localStorage.setItem('txHistory',JSON.stringify(ha));if(!tx.isRetur&&!tx.isOrder&&!tx.isPi)tx.rows.forEach(r=>{const item=findItemByDesc(r.desc);if(item){stockData[item.name]=(stockData[item.name]||0)+r.qty;stockLog.unshift({item:item.name,type:'in',qty:r.qty,note:'Batal: '+tx.invNo,date:new Date().toISOString()})}});saveStockData();closeHistoryDetail();alertSuccess('Transaksi dibatalkan.');loadHistory()})}
 
 function toggleMultiPayMode(){multiPayMode?exitMultiPayMode():enterMultiPayMode()}
 function enterMultiPayMode(){if(!requireLogin())return;multiPayMode=true;selectedHistIds.clear();selClickOrder=[];const btn=document.getElementById('btnMultiPayToggle');if(btn){btn.classList.add('active');btn.innerHTML='<svg width="14" height="14" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><use href="#icon-check"/></svg> Aktif'}document.getElementById('multiSelectInfo').style.display='flex';loadHistory();updateMultiSelectInfo()}
@@ -2475,12 +2255,8 @@ function syncSearchClear(input){const w=input&&input.closest?input.closest('.sea
 function clearSearchBox(btn){const w=btn.closest('.search-field');if(!w)return;const input=w.querySelector('.sf-input');if(!input)return;input.value='';syncSearchClear(input);const type=w.dataset.type;if(type==='history'){state.history.search='';state.history.page=1;loadHistory()}else if(type==='stock'){state.stock.search='';state.stock.page=1;renderStockTable()}else if(type==='item'){state.item.search='';state.item.page=1;renderTable('item')}else if(type==='cust'){state.cust.search='';state.cust.page=1;renderTable('cust')}else if(type==='settlement'){renderSettlementList()}}
 let searchTimeout=null;function debounceSearch(type){clearTimeout(searchTimeout);searchTimeout=setTimeout(()=>{if(type==='item'){state.item.search=document.getElementById('searchItem').value.toLowerCase();state.item.page=1;renderTable('item')}else if(type==='cust'){state.cust.search=document.getElementById('searchCust').value.toLowerCase();state.cust.page=1;renderTable('cust')}},300)}
 let stockSearchTimeout=null;function debounceStockSearch(){clearTimeout(stockSearchTimeout);stockSearchTimeout=setTimeout(()=>{state.stock.search=document.getElementById('searchStock').value.toLowerCase();state.stock.page=1;renderStockTable()},300)}
-function handleFileImport(input){const file=input.files[0];if(!file)return;const type=input.getAttribute('data-type'),isExcel=/\.xlsx?$/i.test(file.name),reader=new FileReader();if(isExcel){reader.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});processUnifiedImport(type,XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}))}catch(err){alertDanger('File Excel tidak valid!')}};reader.readAsArrayBuffer(file)}else{reader.onload=e=>{try{processUnifiedImport(type,JSON.parse(e.target.result))}catch(err){alertDanger('JSON tidak valid!')}};reader.readAsText(file)}}
 function handleRestoreFile(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(e){try{const data=JSON.parse(e.target.result);if(!data||!data._backup){alertDanger('File bukan backup yang valid!');return}showConfirm('Restore backup dari <b>'+fmtDateShort(data._timestamp)+'</b>?<br><small>Semua data saat ini akan DITIMPA.</small>',function(y){if(!y)return;try{if(Array.isArray(data.masterItems)){items=data.masterItems;localStorage.setItem('masterItems',JSON.stringify(items))}if(Array.isArray(data.masterCust)){customers=data.masterCust;localStorage.setItem('masterCust',JSON.stringify(customers))}if(data.stockData&&typeof data.stockData==='object'){stockData=data.stockData}if(Array.isArray(data.stockLog)){stockLog=data.stockLog}saveStockData();if(Array.isArray(data.txHistory)){localStorage.setItem('txHistory',JSON.stringify(data.txHistory))}ensureStockEntries();renderTable('item');renderTable('cust');renderStockTable();if(typeof loadHistory==='function')loadHistory();alertSuccess('Backup berhasil di-restore!')}catch(err){alertDanger('Gagal restore: '+escapeHtml(err.message))}})}catch(err){alertDanger('File JSON tidak valid!')}};reader.readAsText(file);input.value=''}
-function doExport(type){if(!requireLogin())return;let data,fn;if(type==='item')data=items,fn='barang.json';else if(type==='cust')data=customers,fn='customer.json';else if(type==='history')data=JSON.parse(localStorage.getItem('txHistory'))||[],fn='faktur.json';else return;const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=fn;a.click();URL.revokeObjectURL(url);alertSuccess('Ekspor berhasil!')}
 function doBackupAll(){if(!requireLogin())return;const backup={_backup:true,_timestamp:new Date().toISOString(),masterItems:items,masterCust:customers,stockData,stockLog,txHistory:JSON.parse(localStorage.getItem('txHistory'))||[]};const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='bioli_backup.json';a.click();URL.revokeObjectURL(url);alertSuccess('Backup berhasil!')}
-function showExportMenu(){if(!requireLogin())return;enqueuePopup({type:'question',title:'Ekspor',message:'Pilih data:',buttons:[{text:'Barang',cls:'primary',action:'item'},{text:'Customer',cls:'secondary',action:'cust'},{text:'Faktur',cls:'secondary',action:'history'},{text:'Backup',cls:'primary',action:'backup'}],callback:a=>{if(a==='backup')doBackupAll();else if(a)doExport(a)}})}
-function showImportMenu(){if(!requireLogin())return;enqueuePopup({type:'question',title:'Impor Data',message:'Pilih jenis data:',buttons:[{text:'Barang',cls:'primary',action:'item_menu'},{text:'Customer',cls:'secondary',action:'cust'},{text:'Faktur',cls:'secondary',action:'history'}],callback:t=>{if(!t)return;if(t==='item_menu'){enqueuePopup({type:'question',title:'Impor Barang',message:'Pilih tipe impor:',buttons:[{text:'Update Stok',cls:'primary',action:'item_stock'},{text:'Data Master',cls:'secondary',action:'item_master'}],callback:sub=>{if(!sub)return;if(sub==='item_stock'){enqueuePopup({type:'info',title:'Format Import Stok',message:'File harus berisi kolom:<br><b>code</b> (atau name) dan <b>qty</b>.',buttons:[{text:'OK',cls:'primary',action:'ok'}],callback:()=>{document.getElementById('importFileInput').setAttribute('data-type','item_stock');document.getElementById('importFileInput').click()}})}else{document.getElementById('importFileInput').setAttribute('data-type','item_master');document.getElementById('importFileInput').click()}}})}else if(t==='history'){enqueuePopup({type:'question',title:'Tipe Faktur',message:'',buttons:[{text:'BDG',cls:'primary',action:'BDG'},{text:'JKT',cls:'secondary',action:'JKT'}],callback:r=>{pendingImportRegion=r;document.getElementById('importFileInput').setAttribute('data-type','history');document.getElementById('importFileInput').click()}})}else{document.getElementById('importFileInput').setAttribute('data-type',t);document.getElementById('importFileInput').click()}}})}
 function resetAllStockFromMenu(){if(!requireLogin())return;showDangerConfirm('Reset SEMUA stok ke 0?',c=>{if(!c)return;Object.keys(stockData).forEach(k=>stockData[k]=0);stockLog=[];saveStockData();renderStockTable();renderTable('item');alertSuccess('Stok direset!')})}
 function confirmDeleteAllHistory(){if(!requireLogin())return;showDangerConfirm('Hapus SEMUA faktur?',c=>{if(!c)return;localStorage.removeItem('txHistory');loadHistory();alertSuccess('Semua faktur dihapus!')})}
 function closeModal(id){document.getElementById(id).classList.remove('open')}
@@ -2521,7 +2297,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='7.3';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='7.4';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -9489,6 +9265,23 @@ body.order-mode #page-input .order-no-input{
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){install();setTimeout(install,300);setTimeout(install,900);});else{install();setTimeout(install,300);setTimeout(install,900);}
   window.addEventListener('load',function(){setTimeout(install,80);setTimeout(install,600);setTimeout(assertOwner,2600);setTimeout(assertOwner,3200);});
   console.log('[v108R22] label Faktur di kartu pelunasan = nilai barang murni aktif');
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH OFFLINE: daftarin sw.js biar aplikasi kebuka tanpa internet
+   ========================================================== */
+(function(){
+  'use strict';
+  if (window.__offlinePatch) return; window.__offlinePatch = true;
+  if (!('serviceWorker' in navigator)) return;
+  function reg(){
+    navigator.serviceWorker.register('./sw.js').then(function(r){
+      console.log('[offline] SW status:', r.active ? 'AKTIF' : 'installing');
+    }).catch(function(e){ console.log('[offline] SW gagal:', e); });
+  }
+  if (document.readyState === 'complete') reg();
+  else window.addEventListener('load', reg);
 })();
 </script>
 </body>
