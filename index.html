@@ -5,11 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
 <title>Sistem Transaksi - PT. BIOLI LESTARI</title>
 <link rel="manifest" href="./manifest.json">
-   <link rel="icon" type="image/svg+xml" href="./icon.svg">
-   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
-   <link rel="icon" type="image/png" sizes="152x152" href="./icon-152.png">
-   <link rel="apple-touch-icon" href="./icon-192.png">
-   <meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#1e3a8a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="BIOLI">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" type="image/png" href="./icon-192.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter/400.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter/500.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter/600.css">
@@ -1023,7 +1025,7 @@ try{console.log('[GATE BYPASS] watchdog body.app-ready aktif (timeout 3.5s + ant
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v7.5</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v7.6</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2309,7 +2311,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='7.5';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='7.6';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -7963,6 +7965,13 @@ try{console.log('[STOCK PRICE TOP v2] observer + sweep aktif (cek log cards/move
 #itemList [data-col="size"],#custList [data-col="size"],#itemList .ml-tag.sales,#custList .ml-tag.sales{color:var(--text)!important;font-weight:700!important}
 #itemList .ml-tag.cat,#custList .ml-tag.cat,#itemList [data-col="cat"],#custList [data-col="cat"]{flex:0 0 auto!important;order:99!important;margin-left:auto!important;max-width:none!important;overflow:visible!important;text-align:right!important;font-size:8.5px!important;font-weight:800!important;text-transform:uppercase!important;letter-spacing:.4px!important;color:var(--accent-cat,var(--text-light))!important}
 #itemList [data-col="desc"],#custList [data-col="desc"]{margin:5px 0 0!important;font-size:9px!important;line-height:1.4!important;color:var(--text-light)!important;opacity:.85!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+
+/* ===== CUST v2: nama + kode nempel kiri, tempo kanan, salesman ilang, kode = chip ID profesional (scope #custList ONLY) ===== */
+#custList .ml-top{justify-content:flex-start!important;gap:6px!important}                                   /* bunuh space-between biang kode ngambang di tengah */
+#custList .ml-tag.sales,#custList [data-col="sales"],#custList .ml-top .ml-meta,#custList .ml-top .ml-tag.sales{display:none!important}  /* hide salesman + wrapper nyasar */
+#custList .ml-top .ml-name{order:0!important;flex:0 1 auto!important}                                          /* nama paling kiri */
+#custList .ml-top .ml-tag.code,#custList .ml-top [data-col="code"]{order:1!important;flex:0 0 auto!important;margin-right:auto!important;display:inline-flex!important;align-items:center!important;margin:0!important;padding:2px 8px!important;font-family:var(--font-mono)!important;font-size:9.5px!important;font-weight:700!important;line-height:1.2!important;letter-spacing:.4px!important;text-transform:uppercase!important;color:var(--accent)!important;background:color-mix(in srgb,var(--accent) 9%,transparent)!important;border:1px solid color-mix(in srgb,var(--accent) 22%,transparent)!important;border-radius:7px!important;white-space:nowrap!important;max-width:none!important}  /* kode nempel kanan nama + chip biru soft; margin-right:auto dorong tempo ke kanan */
+#custList .ml-top > *:not(.ml-name):not(.ml-tag.code):not([data-col="code"]){order:2!important}                /* tempo & sisanya rata kanan */
 </style>
 <script>
 /* PATCH ITEM PRICE TO TOP - mirror v2 tapi scope #itemList doang - opportunistic & idempoten (no-op kalau struktur beda) */
@@ -7987,7 +7996,7 @@ log();
 #itemList .search-field,#custList .search-field,.search-field{display:flex!important;align-items:center!important;gap:7px!important;box-sizing:border-box!important;height:44px!important;padding:0 11px!important;border:1px solid var(--border)!important;border-radius:12px!important;background:color-mix(in srgb,var(--text) 4%,var(--surface))!important;transition:border-color .18s var(--ease),box-shadow .18s var(--ease),background .18s var(--ease)!important}
 .search-field:focus-within{border-color:color-mix(in srgb,var(--accent) 55%,var(--border))!important;background:var(--surface)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)!important}
 .sf-icon{flex:0 0 auto!important;width:16px!important;height:16px!important;color:var(--text-light)!important;opacity:.7!important}
-#searchHistory,#searchStock,#searchItem,#searchCust,.sf-input{flex:1 1 auto!important;min-width:0!important;height:auto!important;margin:0!important;padding:0!important;border:none!important;outline:none!important;background:transparent!important;box-shadow:none!important;box-sizing:border-box!important;color:var(--text)!important;font-family:var(--font-main)!important;font-size:12.5px!important;font-weight:600!important;line-height:1.2!important;-webkit-appearance:none!important;appearance:none!important}
+#searchHistory,#searchStock,#searchItem,#searchCust,.sf-input{flex:1 1 auto!important;min-width:0!important;height:auto!important;margin:0!important;padding:0!important;border:none!important;outline:none!important;background:transparent!important;box-shadow:none!important;box-sizing:border-box!important;color:var(--text)!important;font-family:var(--font-main)!important;font-size:12.5px!important;font-weight:600!important;line-height:1.5!important;-webkit-appearance:none!important;appearance:none!important}
 #searchHistory::placeholder,#searchStock::placeholder,#searchItem::placeholder,#searchCust::placeholder,.sf-input::placeholder{color:var(--text-light)!important;opacity:.75!important;font-weight:500!important}
 #searchHistory:-webkit-autofill,#searchStock:-webkit-autofill,#searchItem:-webkit-autofill,#searchCust:-webkit-autofill{-webkit-text-fill-color:var(--text)!important;-webkit-box-shadow:0 0 0 1000px color-mix(in srgb,var(--text) 4%,var(--surface)) inset!important;caret-color:var(--text)!important;border-radius:0!important}
 .sf-clear{flex:0 0 auto!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:22px!important;height:22px!important;margin:0!important;padding:0!important;border:none!important;background:transparent!important;border-radius:6px!important;color:var(--text-light)!important;cursor:pointer!important;transition:color .15s var(--ease),background .15s var(--ease)!important}
@@ -8040,17 +8049,20 @@ try{console.log('[HIST FILTER FIX] updateInvoiceTypeFilterMenu jadi refresh-only
 })();
 </script>
 <script>
-/* PATCH PILIH SEMUA AUTO v3 - satu baris per fungsi - skip toggle, set flag manual + jaring rAF + log diagnostik */
+/* PATCH PILIH SEMUA AUTO v3 (FIX) - nyalain mode via jalur resmi biar bar Share/Piutang/Bayar ikut muncul */
 (function(){'use strict';if(window.__pilihSemuaAuto3)return;window.__pilihSemuaAuto3=true;
 function q(s){return document.querySelector(s);}
 function closeAksi(){var m=q('#histActionsMenu');if(m)m.classList.remove('open');}
 function doRender(){try{window.updateMultiSelectInfo();}catch(e){}try{window.loadHistory();}catch(e){}}
-function selectAll(){closeAksi();window.multiPayMode=true;var ha;try{ha=JSON.parse(localStorage.getItem('txHistory')||'[]');}catch(e){ha=[];}var per=window.HISTORY_PER_PAGE||25,page=(window.state&&state.history&&state.history.page)||1,start=(page-1)*per,gis=(window.filteredHistoryGIs||[]).slice(start,start+per),added=0,i,gi,tx;if(!window.selectedHistIds)window.selectedHistIds=new Set();if(!window.selClickOrder)window.selClickOrder=[];for(i=0;i<gis.length;i++){gi=gis[i];tx=ha[gi];if(!tx||tx.isCancelled||tx.isRetur||tx.isPi||tx.isOrder)continue;if(!window.selectedHistIds.has(gi)){window.selectedHistIds.add(gi);window.selClickOrder.push(gi);added++;}}var sizeAfter=window.selectedHistIds.size;doRender();requestAnimationFrame(function(){doRender();try{console.log('[PS v3] added='+added+' sizeAfterAdd='+sizeAfter+' sizeAfterRAF='+window.selectedHistIds.size);}catch(e){}});try{console.log('[PS v3] tap Pilih Semua: added='+added+' sizeAfterAdd='+sizeAfter);}catch(e){}return added;}
+function barVis(){var el=q('#multiSelectInfo');if(!el)return false;var cs=getComputedStyle(el);return cs.display!=='none'&&cs.visibility!=='hidden';}
+function turnOn(){if(typeof window.toggleMultiPayMode==='function'){try{window.toggleMultiPayMode();return;}catch(e){}}if(typeof window.enterMultiPayMode==='function'){try{window.enterMultiPayMode();return;}catch(e){}}window.multiPayMode=true;}
+function ensureModeOn(){if(window.multiPayMode&&!barVis()){try{if(typeof window.exitMultiPayMode==='function')window.exitMultiPayMode();}catch(e){}window.multiPayMode=false;}if(!window.multiPayMode)turnOn();}
+function selectAll(){closeAksi();ensureModeOn();var ha;try{ha=JSON.parse(localStorage.getItem('txHistory')||'[]');}catch(e){ha=[];}var per=window.HISTORY_PER_PAGE||25,page=(window.state&&state.history&&state.history.page)||1,start=(page-1)*per,gis=(window.filteredHistoryGIs||[]).slice(start,start+per),added=0,i,gi,tx;if(!window.selectedHistIds)window.selectedHistIds=new Set();if(!window.selClickOrder)window.selClickOrder=[];for(i=0;i<gis.length;i++){gi=gis[i];tx=ha[gi];if(!tx||tx.isCancelled||tx.isRetur||tx.isPi||tx.isOrder)continue;if(!window.selectedHistIds.has(gi)){window.selectedHistIds.add(gi);window.selClickOrder.push(gi);added++;}}var sizeAfter=window.selectedHistIds.size;doRender();requestAnimationFrame(doRender);try{console.log('[PS v3] added='+added+' size='+sizeAfter+' barVis='+barVis());}catch(e){}return added;}
 function onTap(e){var t=e.target,b;if(!t||!t.closest)return;b=t.closest('#actPilihSemua');if(!b)return;e.preventDefault();try{e.stopImmediatePropagation();}catch(_){}b.onclick=null;selectAll();}
 function attach(){document.addEventListener('click',onTap,true);}
 window.selectAllPage=selectAll;
 attach();setTimeout(attach,300);setTimeout(attach,1200);
-try{console.log('[PILIH SEMUA AUTO v3] toggle di-skip; flag manual + jaring rAF + log size aktif');}catch(e){}
+try{console.log('[PILIH SEMUA AUTO v3 FIX] mode resmi + self-heal bar aktif');}catch(e){}
 })();
 </script>
 </body>

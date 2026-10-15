@@ -1,7 +1,7 @@
 {
-  "version": "7.5",
-  "releaseDate": "2026-08-06",
+  "version": "7.6",
+  "releaseDate": "2026-10-16",
   "minVersion": "3.0",
   "forceUpdate": false,
-  "notes": "v7.5: icon FULL PNG asli, manifest & SW bersih, laporan harian, CMM hanya pelunasan, anti-blokir jatuh tempo, nama barang 2 baris, filter kategori+promo, fix sinkron LK."
+  "notes": "v7.6: PWA install fix (manifest & SW bersih, icon 192+512), JSON Converter, searchbox descender ga kepotong, kartu Pelanggan rapi (salesman di-hide, kode dealer = chip ID nempel nama, ukuran kode & tempo disamakan), version.json dibersihkan dari spasi key/value."
 }
