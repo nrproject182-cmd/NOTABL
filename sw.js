@@ -4,7 +4,7 @@
    2) Navigasi pakai cache (offline open), fresh cuma lewat ?_r= (alur update manual)
    3) version.json selalu tembus network (biar cek update akurat)
    ========================================================== */
-var CACHE = '7.4';
+var CACHE = '7.5';
 var NAV_KEY = './index.html'; // <-- GANTI kalau nama file utama lu bukan index.html
 
 var CORE = [
