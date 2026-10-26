@@ -1,7 +1,7 @@
 {
-  "version": "8.2",
+  "version": "8.3",
   "releaseDate": "2026-10-16",
   "minVersion": "3.0",
   "forceUpdate": false,
-  "notes": "v8.2: PWA install fix (manifest & SW bersih, icon 192+512), JSON Converter, searchbox descender ga kepotong, kartu Pelanggan rapi (salesman di-hide, kode dealer = chip ID nempel nama, ukuran kode & tempo disamakan), version.json dibersihkan dari spasi key/value."
+  "notes": "v8.3: PWA install fix (manifest & SW bersih, icon 192+512), JSON Converter, searchbox descender ga kepotong, kartu Pelanggan rapi (salesman di-hide, kode dealer = chip ID nempel nama, ukuran kode & tempo disamakan), version.json dibersihkan dari spasi key/value."
 }
