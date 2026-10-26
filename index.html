@@ -1026,7 +1026,7 @@ try{console.log('[GATE BYPASS] watchdog body.app-ready aktif (timeout 3.5s + ant
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v8.0</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v8.1</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2322,7 +2322,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='8.0';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='8.1';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('custPageMenu')||document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -7597,7 +7597,7 @@ try{console.log('[RESET RUSAK FINAL v2] 2 lapis rem recursion aktif');}catch(e){
   function sharePiutang(){var rows=piutangRows();if(!rows.length)return alertWarning('Tidak ada nota terpilih dengan sisa piutang (nota lunas dilewati)!');window.open('https://wa.me/?text='+encodeURIComponent(buildPiutangText(rows)),'_blank');}
   function statusMaker21(){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var byInv={};ha.forEach(function(t){byInv[t.invNo]=t;});return function(inv){var t=byInv[inv];if(!t)return '';var rem=((t.region==='LKOTM'||t.region==='LKPRT')&&typeof window.lkPayableRemaining==='function')?window.lkPayableRemaining(t,ha):getRemainingBalance(t,ha);return rem<=0?'LUNAS':'TITIP';};}
   function mergeSettle21(list){var map={},order=[];list.forEach(function(s){var k=s.invNo;if(!map[k]){map[k]={invNo:s.invNo,custName:s.custName,custCode:s.custCode,amount:0,cmm:0,cash:0,transfer:0,date:s.date,count:0};order.push(k);}var m=map[k];m.amount+=(parseFloat(s.amount)||0);m.cmm+=(parseFloat(s.cmm)||0);m.cash+=(parseFloat(s.cash)||0);m.transfer+=(parseFloat(s.transfer)||0);m.count++;if(s.date<m.date)m.date=s.date;});return order.map(function(k){return map[k];});}
-  function buildSettleText21(list){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var byInv={};ha.forEach(function(t){byInv[t.invNo]=t;});var rm=retMap21();var st=statusMaker21();var merged=mergeSettle21(list);merged.sort(function(a,b){return new Date(a.date)-new Date(b.date);});var map={},order=[];merged.forEach(function(s){var code=s.custCode||('__NAME__'+s.custName);if(!map[code]){map[code]={name:s.custName,code:s.custCode,rows:[]};order.push(code);}map[code].rows.push(s);});var txt='',grand=0;order.forEach(function(code,gi){var g=map[code];if(gi>0)txt+='\n';txt+='*'+String(cleanCustName(g.name,g.code)||g.name).toUpperCase()+(g.code?' ('+g.code+')':'')+'*\n';var sum=0,cmm=0,ong=0;g.rows.forEach(function(r){var tx=byInv[r.invNo];var p=tx?parts21(tx,rm):{rOng:0,rCmm:0};var ongPart=r.amount*p.rOng;var cmmPart=r.amount*p.rCmm;var tag=r.amount-ongPart+cmmPart;var s2=st(r.invNo);txt+=r.invNo+' = '+fmtCurrencyFull(tag)+(s2?' ('+s2+')':'')+'\n';sum+=r.amount;cmm+=cmmPart;ong+=ongPart;});var hasRet=g.rows.some(function(r){return (rm[r.invNo]||0)>0;});if(cmm>0)txt+='CMM = - '+fmtCurrencyFull(cmm)+'\n';if(ong>0)txt+='Ongkir = '+fmtCurrencyFull(ong)+'\n';if(g.rows.length>1||cmm>0||hasRet||ong>0)txt+='*TOTAL = '+fmtCurrencyFull(sum)+'*\n';grand+=sum;});txt+='\n*GRAND TOTAL = '+fmtCurrencyFull(grand)+'*';return txt;}
+  function buildSettleText21(list){var ha=JSON.parse(localStorage.getItem('txHistory')||'[]');var byInv={};ha.forEach(function(t){byInv[t.invNo]=t;});var rm=retMap21();var st=statusMaker21();var merged=mergeSettle21(list);merged.sort(function(a,b){return new Date(a.date)-new Date(b.date);});var map={},order=[];merged.forEach(function(s){var code=s.custCode||('__NAME__'+s.custName);if(!map[code]){map[code]={name:s.custName,code:s.custCode,rows:[]};order.push(code);}map[code].rows.push(s);});var txt='',grand=0;order.forEach(function(code,gi){var g=map[code];if(gi>0)txt+='\n';txt+='*'+String(cleanCustName(g.name,g.code)||g.name).toUpperCase()+(g.code?' ('+g.code+')':'')+'*\n';var sum=0,cmm=0,ong=0;g.rows.forEach(function(r){var tx=byInv[r.invNo];var p=tx?parts21(tx,rm):{rOng:0,rCmm:0};var ongPart=r.amount*p.rOng;var cmmPart=r.amount*p.rCmm;var tag=r.amount-ongPart+cmmPart;var s2=st(r.invNo);txt+=r.invNo+' = '+fmtCurrencyFull(tag)+(s2?' ('+s2+')':'')+'\n';sum+=r.amount;cmm+=cmmPart;ong+=ongPart;});var hasRet=g.rows.some(function(r){return (rm[r.invNo]||0)>0;});if(cmm>0)txt+='CMM = - '+fmtCurrencyFull(cmm)+'\n';if(ong>0)txt+='Ongkir = '+fmtCurrencyFull(ong)+'\n';if(g.rows.length>1||cmm>0||hasRet||ong>0)txt+='*TOTAL = '+fmtCurrencyFull(sum)+'*\n';grand+=sum;});if(order.length>1)txt+='\n*GRAND TOTAL = '+fmtCurrencyFull(grand)+'*';return txt;}
   function visible21(method){var q=(document.getElementById('searchSettlement').value||'').toLowerCase();var all=window.computeSettlements();return all.filter(function(s){if(!((s[method]||0)>0))return false;var str=(s.custName+' '+s.custCode+' '+s.invNo+' '+(s.note||'')).toLowerCase();return !q||str.indexOf(q)>=0;});}
   function shareMenu21(mode,method){var list=visible21(method);if(mode==='day'){var d=new Date();var k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');list=list.filter(function(s){return (s.date||'').slice(0,10)===k;});if(!list.length)return alertWarning('Tidak ada pelunasan '+method+' hari ini!');}else if(!list.length)return alertWarning('Tidak ada data pelunasan '+method+' untuk dishare!');window.open('https://wa.me/?text='+encodeURIComponent(buildSettleText21(list)),'_blank');}
   function selectedList21(){var all=window.computeSettlements();return all.filter(function(s){return selectedSettleKeys.has(s.key);});}
@@ -7819,7 +7819,7 @@ function statusMaker(){var ha=loadHa(),byInv={};ha.forEach(function(t){byInv[t.i
 function mergeByInv(list){var map={},order=[];list.forEach(function(s){var k=s.invNo;if(!map[k]){map[k]={invNo:s.invNo,custName:s.custName,custCode:s.custCode,amount:0,cmm:0,cash:0,transfer:0,date:s.date,count:0};order.push(k);}var m=map[k];m.amount+=(parseFloat(s.amount)||0);m.cmm+=(parseFloat(s.cmm)||0);m.cash+=(parseFloat(s.cash)||0);m.transfer+=(parseFloat(s.transfer)||0);m.count++;if(s.date<m.date)m.date=s.date;});return order.map(function(k){return map[k];});}
 function groupCust(list){var map={},order=[];list.forEach(function(s){var code=s.custCode||('__NAME__'+s.custName);if(!map[code]){map[code]={name:s.custName,code:s.custCode,rows:[]};order.push(code);}map[code].rows.push(s);});return{map:map,order:order};}
 function headCust(g){var nm='';try{nm=String((typeof cleanCustName==='function')?cleanCustName(g.name,g.code):(g.name||'')).trim();}catch(e){nm=String(g.name||'').trim();}return'*'+nm.toUpperCase()+(g.code?' ('+g.code+')':'')+'*\n';}
-function buildSettleText(list){var ha=loadHa(),byInv={};ha.forEach(function(t){byInv[t.invNo]=t;});var rm=retMap(),st=statusMaker(),merged=mergeByInv(list),g=groupCust(merged),txt='',grand=0;merged.sort(function(a,b){return new Date(a.date)-new Date(b.date);});g.order.forEach(function(code,gi){var c=g.map[code];if(gi>0)txt+='\n';txt+=headCust(c);var sum=0,cmm=0,ong=0;c.rows.forEach(function(r){var tx=byInv[r.invNo],p=tx?partsOf(tx,rm):{rOng:0,rCmm:0},ongPart=r.amount*p.rOng,cmmPart=r.amount*p.rCmm,tag=r.amount-ongPart+cmmPart,s2=st(r.invNo);txt+=r.invNo+' = '+fmtCurrencyFull(tag)+(s2?' ('+s2+')':'')+'\n';sum+=r.amount;cmm+=cmmPart;ong+=ongPart;});var hasRet=c.rows.some(function(r){return(rm[r.invNo]||0)>0;});if(cmm>0)txt+='CMM = - '+fmtCurrencyFull(cmm)+'\n';if(ong>0)txt+='Ongkir = '+fmtCurrencyFull(ong)+'\n';if(c.rows.length>1||cmm>0||hasRet||ong>0)txt+='*TOTAL = '+fmtCurrencyFull(sum)+'*\n';grand+=sum;});txt+='\n*GRAND TOTAL = '+fmtCurrencyFull(grand)+'*';return txt;}
+function buildSettleText(list){var ha=loadHa(),byInv={};ha.forEach(function(t){byInv[t.invNo]=t;});var rm=retMap(),st=statusMaker(),merged=mergeByInv(list),g=groupCust(merged),txt='',grand=0;merged.sort(function(a,b){return new Date(a.date)-new Date(b.date);});g.order.forEach(function(code,gi){var c=g.map[code];if(gi>0)txt+='\n';txt+=headCust(c);var sum=0,cmm=0,ong=0;c.rows.forEach(function(r){var tx=byInv[r.invNo],p=tx?partsOf(tx,rm):{rOng:0,rCmm:0},ongPart=r.amount*p.rOng,cmmPart=r.amount*p.rCmm,tag=r.amount-ongPart+cmmPart,s2=st(r.invNo);txt+=r.invNo+' = '+fmtCurrencyFull(tag)+(s2?' ('+s2+')':'')+'\n';sum+=r.amount;cmm+=cmmPart;ong+=ongPart;});var hasRet=c.rows.some(function(r){return(rm[r.invNo]||0)>0;});if(cmm>0)txt+='CMM = - '+fmtCurrencyFull(cmm)+'\n';if(ong>0)txt+='Ongkir = '+fmtCurrencyFull(ong)+'\n';if(c.rows.length>1||cmm>0||hasRet||ong>0)txt+='*TOTAL = '+fmtCurrencyFull(sum)+'*\n';grand+=sum;});if(g.order.length>1)txt+='\n*GRAND TOTAL = '+fmtCurrencyFull(grand)+'*';return txt;}
 function visibleSettle(method){var q=(($('searchSettlement')||{}).value||'').toLowerCase(),all=window.computeSettlements?window.computeSettlements():[];return all.filter(function(s){if(!((s[method]||0)>0))return false;var str=(s.custName+' '+s.custCode+' '+s.invNo+' '+(s.note||'')).toLowerCase();return !q||str.indexOf(q)>=0;});}
 function shareSettleMenu(mode,method){var list=visibleSettle(method);if(mode==='day'){var d=new Date(),k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');list=list.filter(function(s){return(s.date||'').slice(0,10)===k;});if(!list.length)return alertWarning('Tidak ada pelunasan '+method+' hari ini!');}else if(!list.length)return alertWarning('Tidak ada data pelunasan '+method+' untuk dishare!');window.open('https://wa.me/?text='+encodeURIComponent(buildSettleText(list)),'_blank');}
 function selectedSettleList(){var all=window.computeSettlements?window.computeSettlements():[];if(typeof selectedSettleKeys==='undefined')return[];return all.filter(function(s){return selectedSettleKeys.has(s.key);});}
@@ -8730,6 +8730,82 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 window.addEventListener('load',function(){setTimeout(boot,80);setTimeout(boot,400);setTimeout(boot,1200);});
 var k=0,iv=setInterval(function(){eqApply();k++;if(k>60)clearInterval(iv);},1000);
 try{console.log('[CV GRID v4b] Contoh killed via CSS + prevtools 3-col + tools/jsonbar rata');}catch(e){}
+})();
+</script>
+<script>
+/* PATCH HARIAN NO-TOTAL v1: buang baris TOTAL dari teks WA Laporan Harian (semua jalur: per-sales & Semua Sales). Runtime, no source edit. Pasang SETELAH SHARE HARIAN v1. HAPUS kalau SUNTINGAN 3 in-place sudah dipakai. */
+(function(){'use strict';
+if(window.__drNoTotal)return;window.__drNoTotal=true;
+function wrap(){if(typeof window.drShareWA!=='function'||window.drShareWA.__dnt)return;var o=window.drShareWA;window.drShareWA=function(){var prev=window.open;window.open=function(u,f,w){try{if(typeof u==='string'&&/wa\.me|whatsapp\.com/i.test(u)&&/[?&]text=/.test(u)){u=u.replace(/([?&]text=)([^&]*)/,function(m,k,v){var t=decodeURIComponent(v.replace(/\+/g,' ')),L=t.split(/\r?\n/),O=[],i;for(i=0;i<L.length;i++){if(/^\s*(grand\s+)?total\s*[:=]/i.test(L[i]))continue;O.push(L[i]);}while(O.length&&!O[O.length-1].trim())O.pop();return k+encodeURIComponent(O.join('\n'));});}}catch(e){}return prev.call(window,u,f,w);};try{return o.apply(this,arguments);}finally{window.open=prev;}};window.drShareWA.__dnt=true;}
+wrap();
+var n=0,iv=setInterval(function(){wrap();n++;if(n>20)clearInterval(iv);},400);
+try{console.log('[HARIAN NO-TOTAL v1] baris TOTAL disaring dari teks WA (semua jalur)');}catch(_){}
+})();
+</script>
+<script>
+/* PATCH AC-FLIP v1: autocomplete barang flip ke atas saat keyboard buka (VisualViewport, mode-agnostic). Zero-search. Math identik versi lama, cuma format. */
+(function(){'use strict';
+if(window.__acFlip)return;window.__acFlip=true;
+var SEL='.autocomplete-list,[class*="autocomplete"]'; // <-- kalau class dropdown lo beda, ganti 1 string ini doang
+function vv(){return window.visualViewport||{height:window.innerHeight,offsetTop:window.scrollY};}
+function inputFor(ac){var a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')&&ac!==a)return a;var p=ac.parentElement;if(p){var i=p.querySelector('input,textarea');if(i)return i;}var s=ac.previousElementSibling;while(s){if(s.tagName==='INPUT'||s.tagName==='TEXTAREA')return s;s=s.previousElementSibling;}return null;}
+function place(ac){if(!ac||getComputedStyle(ac).display==='none')return;var inp=inputFor(ac);if(!inp)return;var v=vv();if(!v.height)return;var ir=inp.getBoundingClientRect();var relTop=ir.top-v.offsetTop,relBot=ir.bottom-v.offsetTop;var below=v.height-relBot,above=relTop;var want=Math.min(300,v.height*0.45);var flip=(below<want)&&(above>below);var st=ac.style;st.position='fixed';st.left=ir.left+'px';st.width=Math.max(ir.width,160)+'px';st.right='auto';st.margin='0';st.zIndex='99999';st.maxHeight=Math.max(80,(flip?above:below)-8)+'px';st.overflowY='auto';st.webkitOverflowScrolling='touch';if(flip){st.bottom=(window.innerHeight-ir.top+4)+'px';st.top='auto';}else{st.top=(ir.bottom+4)+'px';st.bottom='auto';}}
+function sweep(){var n=document.querySelectorAll(SEL),i;for(i=0;i<n.length;i++)place(n[i]);}
+var q=false;function sched(){if(q)return;q=true;requestAnimationFrame(function(){q=false;sweep();});}
+function bind(){var v=window.visualViewport;if(v){v.addEventListener('resize',sched);v.addEventListener('scroll',sched);}window.addEventListener('scroll',sched,true);document.addEventListener('focusin',sched,true);document.addEventListener('input',sched,true);try{new MutationObserver(sched).observe(document.body,{childList:true,subtree:true});}catch(e){}sched();}
+bind();
+var k=0,iv=setInterval(function(){sweep();k++;if(k>30)clearInterval(iv);},500);
+try{console.log('[AC-FLIP v1] autocomplete flip-aware keyboard aktif');}catch(e){}
+})();
+</script>
+<script>
+/* ==========================================================
+   PATCH LKQ QUICK v1 (one-line/final): Bawaan Luar Kota manual.
+   Urut input tgl->nama->no->nominal; Enter navigate; tgl "25.10"
+   = tahun berjalan; save TETAP buka + kosong kecuali nama + fokus
+   no-nota; klik tgl/nama = kosong paksa; ×/Batal selalu bisa keluar.
+   Deteksi sukses via watch txHistory. Ganti 1 string kalau Simpan
+   polos harus tetap nutup (lihat catatan chat).
+   ========================================================== */
+(function(){'use strict';
+if(window.__lkqQuickV1)return;window.__lkqQuickV1=true;
+var ORDER=['lkqDate','lkqName','lkqInv','lkqOwing'];
+var keep=false,preserveUntil=0,txBefore='',timer=null,dateDispBefore='',nameBefore='';
+function $(id){return document.getElementById(id);}
+function modal(){return $('lkQuickModal');}
+function pad(n){return(n<10?'0':'')+n;}
+function todayShort(){var d=new Date();return pad(d.getDate())+'.'+pad(d.getMonth()+1);}
+function isoToShort(iso){if(!/^\d{4}-\d{2}-\d{2}$/.test(iso))return '';var p=iso.split('-');return p[2]+'.'+p[1];}
+function shortToIso(s){s=String(s||'').trim().replace(/[\/\-,]/g,'.').replace(/\s+/g,'');if(!s)return '';var d=0,m=0;if(/^\d{4}$/.test(s)){d=+s.slice(0,2);m=+s.slice(2,4);}else{var parts=s.split('.');if(parts.length<2)return '';d=+parts[0];m=+parts[1];}if(!d||!m||m<1||m>12)return '';var y=new Date().getFullYear();var dim=new Date(y,m,0).getDate();if(d<1||d>dim)return '';return y+'-'+pad(m)+'-'+pad(d);}
+function setDateDisplay(val,iso){var d=$('lkqDate');if(!d)return;val=val||'';d.value=val;d.dataset.disp=val;d.dataset.iso=iso||'';}
+function normalizeDateInput(){var d=$('lkqDate');if(!d)return;var v=d.value||'';if(/^\d{4}-\d{2}-\d{2}$/.test(v)){setDateDisplay(isoToShort(v),v);return;}var iso=shortToIso(v);if(iso){var p=iso.split('-');setDateDisplay(p[2]+'.'+p[1],iso);}else{setDateDisplay(v,'');}}
+function sanitizeDateInput(){var d=$('lkqDate');if(!d)return;var v=d.value||'';var clean=v.replace(/[^0-9.,\/\-]/g,'').replace(/[\/\-]/g,'.').replace(/,/g,'.');if(clean.length>5)clean=clean.slice(0,5);d.value=clean;d.dataset.disp=clean;d.dataset.iso=shortToIso(clean);}
+function syncDateForSave(){var d=$('lkqDate');if(!d)return;var iso=d.dataset.iso||shortToIso(d.value);dateDispBefore=d.dataset.disp||d.value||'';if(iso){d.value=iso;d.dataset.iso=iso;}else{d.value='';d.dataset.iso='';}}
+function restoreDateDisplay(){var d=$('lkqDate');if(!d)return;d.value=dateDispBefore||'';d.dataset.disp=dateDispBefore||'';d.dataset.iso=shortToIso(dateDispBefore||'');}
+function hideAc(){var ac=$('lkqAcList');if(ac){ac.innerHTML='';ac.style.display='none';}}
+function focusPreserve(el){if(!el)return;preserveUntil=Date.now()+400;try{el.focus();}catch(e){}}
+function reorder(){var m=modal();if(!m||m.__lkqOrdered)return;var date=$('lkqDate'),owing=$('lkqOwing'),name=$('lkqName'),inv=$('lkqInv');if(!date||!owing||!name||!inv)return;var dateCol=date.closest('.col')||date.parentNode;var owingCol=owing.closest('.col')||owing.parentNode;var nameG=name.closest('.form-group');var invG=inv.closest('.form-group');if(!dateCol||!owingCol||!nameG||!invG)return;var row=dateCol.parentNode;nameG.parentNode.insertBefore(dateCol,nameG);invG.parentNode.insertBefore(owingCol,invG.nextSibling);dateCol.style.width='100%';owingCol.style.width='100%';if(row&&!row.children.length)row.remove();m.__lkqOrdered='1';}
+function enhanceDate(){var d=$('lkqDate');if(!d||d.__lkqDateText)return;d.__lkqDateText='1';d.type='text';d.inputMode='text';d.placeholder='dd.mm (tahun berjalan)';d.autocomplete='off';d.spellcheck=false;normalizeDateInput();d.addEventListener('input',sanitizeDateInput);d.addEventListener('blur',normalizeDateInput);}
+function resetAfterSave(){var m=modal();var name=$('lkqName'),inv=$('lkqInv'),date=$('lkqDate'),owing=$('lkqOwing');var keepName=(name&&name.value)||nameBefore||'';if(date)setDateDisplay('','');if(inv)inv.value='';if(owing)owing.value='';if(name)name.value=keepName;hideAc();if(m)m.classList.add('open');if(inv)focusPreserve(inv);}
+function txRaw(){try{return localStorage.getItem('txHistory')||'';}catch(e){return '';}}
+function endKeep(success){keep=false;if(timer){clearInterval(timer);timer=null;}if(success)resetAfterSave();else restoreDateDisplay();}
+function startWatch(){if(timer)clearInterval(timer);var n=0;txBefore=txRaw();timer=setInterval(function(){n++;if(txRaw()!==txBefore){endKeep(true);return;}if(n>600&&timer){clearInterval(timer);timer=null;}},100);}
+function wrapClose(){if(typeof window.closeModal!=='function'||window.closeModal.__lkqV1)return;var o=window.closeModal;window.closeModal=function(id){if(id==='lkQuickModal'&&keep)return;return o.apply(this,arguments);};window.closeModal.__lkqV1=true;}
+function wrapAlerts(){['alertWarning','alertDanger'].forEach(function(n){if(typeof window[n]!=='function'||window[n].__lkqV1)return;var o=window[n];window[n]=function(){if(keep)endKeep(false);return o.apply(this,arguments);};window[n].__lkqV1=true;});}
+function wrapOpen(){if(typeof window.openLKQuick!=='function'||window.openLKQuick.__lkqV1)return;var o=window.openLKQuick;window.openLKQuick=function(){var r=o.apply(this,arguments);setTimeout(function(){reorder();enhanceDate();normalizeDateInput();var d=$('lkqDate');if(d&&!d.value&&!d.dataset.iso)setDateDisplay(todayShort(),shortToIso(todayShort()));},0);return r;};window.openLKQuick.__lkqV1=true;}
+function nextId(id){var i=ORDER.indexOf(id);return(i>=0&&i<ORDER.length-1)?ORDER[i+1]:null;}
+function onKey(e){if(e.key!=='Enter')return;var t=e.target;if(!t||!t.id||ORDER.indexOf(t.id)<0)return;if(t.id==='lkqName'){var ac=$('lkqAcList');if(ac&&ac.style.display!=='none'&&ac.children.length)return;}e.preventDefault();e.stopPropagation();if(t.id==='lkqOwing'){var btn=$('lkqSave');if(btn)btn.click();return;}if(t.id==='lkqDate')normalizeDateInput();var nid=nextId(t.id);if(nid){var el=$(nid);if(el)focusPreserve(el);}}
+function onSaveClick(e){var btn=e.target&&e.target.closest?e.target.closest('#lkqSave,#lkqSaveAgain'):null;if(!btn)return;if(keep){e.preventDefault();e.stopImmediatePropagation();return;}keep=true;nameBefore=($('lkqName')||{}).value||'';syncDateForSave();startWatch();}
+function onCancelClick(e){var t=e.target&&e.target.closest?e.target.closest('#lkQuickModal .close, #lkQuickModal .btn-cancel'):null;if(t&&keep){keep=false;if(timer){clearInterval(timer);timer=null;}restoreDateDisplay();}}
+function onFocusIn(e){var t=e.target;if(!t||!t.id)return;if(Date.now()<preserveUntil)return;if(t.id==='lkqDate'){setDateDisplay('','');}else if(t.id==='lkqName'){t.value='';hideAc();}}
+function init(){var m=modal();if(!m){setTimeout(init,150);return;}reorder();enhanceDate();wrapClose();wrapAlerts();wrapOpen();}
+document.addEventListener('keydown',onKey,true);
+document.addEventListener('click',onSaveClick,true);
+document.addEventListener('click',onCancelClick,true);
+document.addEventListener('focusin',onFocusIn,true);
+init();
+var k=0,iv=setInterval(function(){init();k++;if(k>30)clearInterval(iv);},500);
+try{console.log('[LKQ QUICK v1] urut enter + tgl dd.mm + save tetap-buka + reset fokus no-nota + clear-on-click + cancel-safe aktif');}catch(e){}
 })();
 </script>
 </body>
