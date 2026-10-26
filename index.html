@@ -1026,7 +1026,7 @@ try{console.log('[GATE BYPASS] watchdog body.app-ready aktif (timeout 3.5s + ant
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v8.3</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v8.4</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2322,7 +2322,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='8.3';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='8.4';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('custPageMenu')||document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -7916,16 +7916,6 @@ boot();window.addEventListener('load',function(){setTimeout(boot,80);setTimeout(
 try{console.log('[CMM RACE WIN] guard 150ms->1000ms selamanya + pre-assign tiap buka LK; cmmCash=0, cmmTotal=cmmKhusus');}catch(e){}
 })();
 </script>
-<script>
-/* PATCH STOCK PRICE TOP v2 - observer + instrumen - satu baris per fungsi - scope #stockList */
-(function(){'use strict';if(window.__stockPriceTop2)return;window.__stockPriceTop2=true;
-function moveOne(card){var top=card.querySelector('.ml-top'),meta=card.querySelector('.ml-meta'),price,stockWrap;if(!top||!meta)return 0;price=meta.querySelector('.ml-price');if(!price)return 0;stockWrap=top.lastElementChild;if(stockWrap&&stockWrap!==price)top.insertBefore(price,stockWrap);else top.appendChild(price);return 1;}
-function sweep(tag){var cards=document.querySelectorAll('#stockList .ml-card'),moved=0,i;for(i=0;i<cards.length;i++)moved+=moveOne(cards[i]);try{console.log('[STOCK v2] '+tag+': cards='+cards.length+' moved='+moved);}catch(e){}return moved;}
-function attach(){var list=document.getElementById('stockList');if(!list){setTimeout(attach,150);return;}if(list.__sp2Obs)return;list.__sp2Obs=true;try{new MutationObserver(function(){sweep('obs');}).observe(list,{childList:true,subtree:true,attributes:false});}catch(e){try{console.log('[STOCK v2] observer gagal:',e&&e.message);}catch(_){}}sweep('init');}
-attach();[120,400,900,1800,3200].forEach(function(ms){setTimeout(function(){sweep('delay'+ms);},ms);});
-try{console.log('[STOCK PRICE TOP v2] observer + sweep aktif (cek log cards/moved)');}catch(e){}
-})();
-</script>
 <style id="stock-price-top-css">
 /* ===== STOK v3: buang "permainan border", warna cuma 2 tempat, kategori selalu pojok ===== */
 /* --- kartu: tepi netral + pita warna kiri = identitas kategori --- */
@@ -7981,16 +7971,6 @@ try{console.log('[STOCK PRICE TOP v2] observer + sweep aktif (cek log cards/move
 #custList .ml-top .ml-tag.code,#custList .ml-top [data-col="code"]{order:1!important;flex:0 0 auto!important;margin-right:auto!important;display:inline-flex!important;align-items:center!important;margin:0!important;padding:2px 8px!important;font-family:var(--font-mono)!important;font-size:9.5px!important;font-weight:700!important;line-height:1.2!important;letter-spacing:.4px!important;text-transform:uppercase!important;color:var(--accent)!important;background:color-mix(in srgb,var(--accent) 9%,transparent)!important;border:1px solid color-mix(in srgb,var(--accent) 22%,transparent)!important;border-radius:7px!important;white-space:nowrap!important;max-width:none!important}  /* kode nempel kanan nama + chip biru soft; margin-right:auto dorong tempo ke kanan */
 #custList .ml-top > *:not(.ml-name):not(.ml-tag.code):not([data-col="code"]){order:2!important}                /* tempo & sisanya rata kanan */
 </style>
-<script>
-/* PATCH ITEM PRICE TO TOP - mirror v2 tapi scope #itemList doang - opportunistic & idempoten (no-op kalau struktur beda) */
-(function(){'use strict';if(window.__itemPriceTop)return;window.__itemPriceTop=true;
-function moveOne(card){var top=card.querySelector('.ml-top'),meta=card.querySelector('.ml-meta'),price,name,last;if(!top||!meta)return 0;price=meta.querySelector('.ml-price');if(!price||top.contains(price))return 0;name=top.querySelector('.ml-name');last=top.lastElementChild;if(last&&last!==price&&last!==name)top.insertBefore(price,last);else top.appendChild(price);return 1;}
-function sweep(tag){var cards=document.querySelectorAll('#itemList .ml-card'),m=0,i;for(i=0;i<cards.length;i++)m+=moveOne(cards[i]);try{console.log('[ITEM PRICE] '+tag+': cards='+cards.length+' moved='+m);}catch(e){}return m;}
-function attach(){var list=document.getElementById('itemList');if(!list){setTimeout(attach,150);return;}if(list.__iptObs)return;list.__iptObs=true;try{new MutationObserver(function(){sweep('obs');}).observe(list,{childList:true,subtree:true,attributes:false});}catch(e){}sweep('init');}
-attach();[120,400,900,1800].forEach(function(ms){setTimeout(function(){sweep('d'+ms);},ms);});
-try{console.log('[ITEM PRICE TO TOP] aktif (kalau moved=0 berarti harga Barang emang udah di baris 1 / gak ada .ml-price di meta — CSS tetep rapi)');}catch(e){}
-})();
-</script>
 <script>
 /* PATCH SEARCHBOX PROBE - 1 baris per fungsi - cuma log deteksi :has() (bonus rule), gak nyentuh apa-apa */
 (function(){'use strict';if(window.__searchProbe)return;window.__searchProbe=true;
@@ -8829,6 +8809,83 @@ document.addEventListener('focusin',onFocusIn,true);
 init();
 var k=0,iv=setInterval(function(){init();k++;if(k>30)clearInterval(iv);},500);
 try{console.log('[LKQ QUICK v1] urut enter + tgl dd.mm + save tetap-buka + reset fokus no-nota + clear-on-click + cancel-safe aktif');}catch(e){}
+})();
+</script>
+<style id="desc-ro-v5-css">
+/* v5: input ASLI (gak disentuh), overlay = cermin baca 2-baris, rata tengah scroll-safe. Tinggi row dikunci --descH. */
+#inputRows{--descH:2.5em}
+#inputRows td.desc-td{position:relative;height:var(--descH);max-height:var(--descH);overflow:hidden;vertical-align:middle}
+#inputRows td.desc-td .desc-input{position:relative;z-index:1;width:100%;box-sizing:border-box}
+#inputRows td.desc-td .desc-ro{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);z-index:2;display:none;max-height:var(--descH);overflow-y:auto;overflow-x:hidden;white-space:normal;word-break:break-word;overflow-wrap:anywhere;-webkit-overflow-scrolling:touch;cursor:text;background:var(--surface);box-sizing:border-box}
+#inputRows td.desc-td:not(.editing) .desc-ro{display:block}
+</style>
+<script>
+/* PATCH DESC RO v5 (ganti v1-v4): NO proxy, NO ganti element. Input asli utuh; overlay cermin 2-baris rata-tengah scroll-safe pas blur; caret presisi pas ngetik. WAJIB cabut v1-v4 dulu. 1 fungsi 1 baris. */
+(function(){'use strict';
+if(window.__descRoV5)return;window.__descRoV5=true;
+var FONT=['fontFamily','fontSize','fontWeight','fontStyle','lineHeight','letterSpacing','wordSpacing','color','textAlign','textTransform','direction','textIndent','paddingTop','paddingRight','paddingBottom','paddingLeft'];
+function rows(){return document.getElementById('inputRows');}
+function cleanupLegacy(){var r=rows();if(!r)return;try{r.querySelectorAll('.desc-view,textarea.desc-ta').forEach(function(n){if(n.parentNode)n.parentNode.removeChild(n);});}catch(e){}try{r.querySelectorAll('td.desc-cell,td.desc-td').forEach(function(td){td.classList.remove('desc-cell','desc-td','editing');td.style.height='';td.style.maxHeight='';td.style.overflow='';});}catch(e){}try{r.querySelectorAll('input.desc-input').forEach(function(inp){if(inp.dataset&&inp.dataset.descTa){try{delete inp.value;}catch(e){}try{delete inp.selectionStart;}catch(e){}try{delete inp.selectionEnd;}catch(e){}try{delete inp.setSelectionRange;}catch(e){}inp.classList.remove('orig-hidden');delete inp.dataset.descTa;}});}catch(e){}}
+function ensureRo(inp){var td=inp.closest('td');if(!td)return null;td.classList.add('desc-td');var ro=td.querySelector('.desc-ro');if(!ro){ro=document.createElement('div');ro.className='desc-ro';ro.setAttribute('aria-hidden','true');td.appendChild(ro);var cs=getComputedStyle(inp);for(var i=0;i<FONT.length;i++){try{ro.style[FONT[i]]=cs[FONT[i]];}catch(e){}}}return ro;}
+function syncRo(inp){var ro=ensureRo(inp);if(ro)ro.textContent=inp.value||'';}
+function syncAll(){var r=rows();if(!r)return;var ins=r.querySelectorAll('input.desc-input'),i;for(i=0;i<ins.length;i++)syncRo(ins[i]);}
+function onFocusIn(e){var t=e.target;if(t&&t.classList&&t.classList.contains('desc-input')&&t.tagName==='INPUT'){var td=t.closest('td');if(td)td.classList.add('editing');}}
+function onFocusOut(e){var t=e.target;if(t&&t.classList&&t.classList.contains('desc-input')&&t.tagName==='INPUT'){var td=t.closest('td');if(td)td.classList.remove('editing');syncRo(t);}}
+function onChange(e){var t=e.target;if(t&&t.classList&&t.classList.contains('desc-input')&&t.tagName==='INPUT')syncRo(t);}
+function onClick(e){var t=e.target;if(t&&t.classList&&t.classList.contains('desc-ro')){var td=t.closest('td');var inp=td&&td.querySelector('input.desc-input');if(inp){e.preventDefault();try{inp.focus();}catch(_){}}}}
+function wrap(n){if(typeof window[n]!=='function'||window[n].__descRoV5)return;var o=window[n];window[n]=function(){var r=o.apply(this,arguments);setTimeout(syncAll,0);setTimeout(syncAll,140);return r;};window[n].__descRoV5=true;}
+wrap('renderRowsToDOM');wrap('addNewRowDOM');wrap('resetTransactionUI');
+function boot(){cleanupLegacy();syncAll();}
+document.addEventListener('focusin',onFocusIn,true);
+document.addEventListener('focusout',onFocusOut,true);
+document.addEventListener('change',onChange,true);
+document.addEventListener('click',onClick,true);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+window.addEventListener('load',function(){setTimeout(boot,80);setTimeout(boot,500);});
+try{console.log('[DESC RO v5] input asli utuh + overlay cermin 2-baris rata-tengah (caret presisi pas ngetik)');}catch(e){}
+})();
+</script>
+<style id="row-fix-v67-css">
+/* === v67 (gabungan V6+V7, ter-dedupe & dikonsisten-in): nama wrap-2 (Stock+Barang); harga pojok kanan baris-2, tag info deret kiri (konsisten 2 halaman); dropdown clamp tinggi/lebar. WAJIB: hapus 2 patch price-top + cabut blok V6/V7 lama + reload. Hapus blok ini = revert. === */
+#itemList .ml-top .ml-name,#stockList .ml-top .ml-name{flex:1 1 auto!important;min-width:0!important;white-space:normal!important;display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;overflow:hidden!important;text-overflow:ellipsis!important;line-height:1.25!important}
+#itemList .ml-meta .ml-price,#stockList .ml-meta .ml-price{margin-left:auto!important;flex:0 0 auto!important}
+#itemList .ml-meta .ml-tag.cat,#stockList .ml-meta .ml-tag.cat{margin-left:0!important}
+#itemList .filter-dropdown-menu,#stockList .filter-dropdown-menu,#itemList .dropdown-menu,#stockList .dropdown-menu{max-width:calc(100vw - 16px)!important;max-height:min(58vh,440px)!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;box-sizing:border-box!important}
+</style>
+<script>
+/* PATCH ITEM DEMOTE v7 (dalam blok v67): pindahin .ml-price direct-child .ml-top -> append .ml-meta (Barang aja, #itemList). Idempoten + snapshot-array (aman kalau nanti >1 price). GAK nyentuh value/kursor/proxy/overlay. Robust via wrap renderTable + observer #itemList. 1 fungsi 1 baris. */
+(function(){'use strict';
+if(window.__itemDemoteV7)return;window.__itemDemoteV7=true;
+function demoteOne(card){var top=card.querySelector('.ml-top'),meta=card.querySelector('.ml-meta');if(!top||!meta)return;var kids=[].slice.call(top.children),i,el;for(i=0;i<kids.length;i++){el=kids[i];if(el.classList&&el.classList.contains('ml-price'))meta.appendChild(el);}}
+function demote(){var list=document.getElementById('itemList');if(!list)return;var cards=list.querySelectorAll('.ml-card'),i;for(i=0;i<cards.length;i++)demoteOne(cards[i]);}
+var q=false;function sched(){if(q)return;q=true;requestAnimationFrame(function(){q=false;demote();});}
+function wrap(n){if(typeof window[n]!=='function'||window[n].__itemDemoteV7)return;var o=window[n];window[n]=function(){var r=o.apply(this,arguments);setTimeout(sched,0);setTimeout(sched,140);return r;};window[n].__itemDemoteV7=true;}
+wrap('renderTable');
+function bind(){var list=document.getElementById('itemList');if(!list){setTimeout(bind,150);return;}if(list.__v7Obs)return;list.__v7Obs=true;try{new MutationObserver(sched).observe(list,{childList:true,subtree:true});}catch(e){}demote();}
+function boot(){bind();demote();}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+window.addEventListener('load',function(){setTimeout(boot,80);setTimeout(boot,500);});
+try{console.log('[v67] harga Barang turun baris-2 + nama wrap-2 + dropdown clamp (Stock konsisten)');}catch(e){}
+})();
+</script>
+<script>
+/* PATCH DELCAT-HEADER v1: pindahin tombol Hapus Kategori (#btnDeleteCat, beserta .filter-dropdown-wrap-nya kalau ada) dari baris filter -> header Barang (.pro-header-actions), rata kanan. Idempoten. Gak nyentuh value/kursor/filtered logic. 1 fungsi 1 baris. */
+(function(){'use strict';
+if(window.__delCatHeader)return;window.__delCatHeader=true;
+function itemList(){return document.getElementById('itemList');}
+function headerHost(){var li=itemList();if(!li)return null;var pg=li.closest('.page')||li.closest('[id^="page-"]')||li.closest('section');var h=pg&&pg.querySelector('.pro-header-actions');if(h)return h;h=pg&&pg.querySelector('.pro-header');if(h)return h;h=document.querySelector('#page-item .pro-header-actions');if(h)return h;return null;}
+function unitOf(btn){var w=btn.closest('.filter-dropdown-wrap,.dropdown-wrap');return (w&&w.querySelector('.dropdown-menu,.filter-dropdown-menu'))?w:btn;}
+function alreadyInHeader(u){var h=u.closest('.pro-header-actions,.pro-header');return !!(h&&h.contains(u));}
+function move(){var btn=document.getElementById('btnDeleteCat');if(!btn)return;var u=unitOf(btn);if(alreadyInHeader(u))return;var host=headerHost();if(!host)return;host.appendChild(u);u.style.marginLeft='auto';u.style.flexShrink='0';try{if(u.classList)u.classList.add('dc-header');}catch(e){}}
+var q=false;function sched(){if(q)return;q=true;requestAnimationFrame(function(){q=false;move();});}
+function wrap(n){if(typeof window[n]!=='function'||window[n].__delCatHeader)return;var o=window[n];window[n]=function(){var r=o.apply(this,arguments);setTimeout(sched,0);setTimeout(sched,140);return r;};window[n].__delCatHeader=true;}
+wrap('renderTable');
+function bind(){var li=itemList();if(!li){setTimeout(bind,150);return;}if(li.__dcObs)return;li.__dcObs=true;try{new MutationObserver(sched).observe(li,{childList:true,subtree:true});}catch(e){}move();}
+function boot(){bind();move();}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+window.addEventListener('load',function(){setTimeout(boot,80);setTimeout(boot,500);});
+var k=0,iv=setInterval(function(){move();k++;if(k>20)clearInterval(iv);},600);
+try{console.log('[DELCAT-HEADER v1] tombol hapus kategori pindah header Barang rata kanan');}catch(e){}
 })();
 </script>
 </body>
