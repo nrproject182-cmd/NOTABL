@@ -1026,7 +1026,7 @@ try{console.log('[GATE BYPASS] watchdog body.app-ready aktif (timeout 3.5s + ant
       </svg>
     </div>
     <div class="sp-word">PT. BIOLI LESTARI</div>
-    <div class="sp-tag">Sistem Transaksi &#x2022; v8.1</div>
+    <div class="sp-tag">Sistem Transaksi &#x2022; v8.2</div>
     <div class="sp-bar"><span class="sp-barfill"></span></div>
     <div class="sp-load">Memuat sistem&#x2026;</div>
     <div class="sp-fallback" id="splashFallbackNote">Memuat lebih lama dari biasanya. Jika tertahan, buka file ini dengan <b>Chrome</b> atau <b>Firefox</b>.</div>
@@ -2322,7 +2322,7 @@ window.addEventListener('beforeunload',function(e){if(loginDuration==='session')
 window.addEventListener('pagehide',function(){if(loginDuration==='session')sessionStorage.removeItem('loginSession')});
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!isUnlocked)return;var memValid=loginDuration!=='session'&&loginExpireAt>0&&Date.now()<loginExpireAt;if(memValid){try{localStorage.setItem('loginSession','active');localStorage.setItem('loginExpireAt',''+loginExpireAt);localStorage.setItem('loginDuration',loginDuration)}catch(_){}return}if(!checkLoginSession()){isUnlocked=false;updateLoginUI();alertWarning('Sesi berakhir. Login kembali.')}});
 
-var APP_VERSION='8.1';var VB_STATUS='idle';var VB_SERVER=null;
+var APP_VERSION='8.2';var VB_STATUS='idle';var VB_SERVER=null;
 function vb_cmp(a,b){a=String(a||'0').split('.');b=String(b||'0').split('.');for(var i=0;i<3;i++){var x=parseInt(a[i]||0,10),y=parseInt(b[i]||0,10);if(x!==y)return x<y?-1:1}return 0}
 function vb_statusText(){if(VB_STATUS==='ok')return'terbaru';if(VB_STATUS==='update')return'ada v'+VB_SERVER;if(VB_STATUS==='offline')return'offline';return'cek\u2026'}
 function vb_injectMenuRow(){var m=document.getElementById('custPageMenu')||document.getElementById('modeMenu');if(!m)return;var slot=m.querySelector('#vbSlot');var row=document.createElement('div');row.className='dropdown-item vb-menu-row';row.setAttribute('onclick','vb_tap()');row.innerHTML='<span class="vb-dot '+VB_STATUS+'"></span><span class="vb-ver">v'+APP_VERSION+'</span><span class="vb-st '+VB_STATUS+'">'+vb_statusText()+'</span>';if(slot){slot.innerHTML='';slot.appendChild(row)}else{var old=m.querySelector('.vb-menu-row');if(old)old.remove();m.appendChild(row)}}
@@ -8733,26 +8733,82 @@ try{console.log('[CV GRID v4b] Contoh killed via CSS + prevtools 3-col + tools/j
 })();
 </script>
 <script>
-/* PATCH HARIAN NO-TOTAL v1: buang baris TOTAL dari teks WA Laporan Harian (semua jalur: per-sales & Semua Sales). Runtime, no source edit. Pasang SETELAH SHARE HARIAN v1. HAPUS kalau SUNTINGAN 3 in-place sudah dipakai. */
+/* PATCH HARIAN NO-TOTAL v1: buang baris TOTAL dari teks WA Laporan Harian (semua jalur: per-sales & Semua Sales). Runtime, no source edit. Pasang SETELAH SHARE HARIAN v1. */
 (function(){'use strict';
 if(window.__drNoTotal)return;window.__drNoTotal=true;
-function wrap(){if(typeof window.drShareWA!=='function'||window.drShareWA.__dnt)return;var o=window.drShareWA;window.drShareWA=function(){var prev=window.open;window.open=function(u,f,w){try{if(typeof u==='string'&&/wa\.me|whatsapp\.com/i.test(u)&&/[?&]text=/.test(u)){u=u.replace(/([?&]text=)([^&]*)/,function(m,k,v){var t=decodeURIComponent(v.replace(/\+/g,' ')),L=t.split(/\r?\n/),O=[],i;for(i=0;i<L.length;i++){if(/^\s*(grand\s+)?total\s*[:=]/i.test(L[i]))continue;O.push(L[i]);}while(O.length&&!O[O.length-1].trim())O.pop();return k+encodeURIComponent(O.join('\n'));});}}catch(e){}return prev.call(window,u,f,w);};try{return o.apply(this,arguments);}finally{window.open=prev;}};window.drShareWA.__dnt=true;}
+function wrap(){
+  if(typeof window.drShareWA!=='function'||window.drShareWA.__dnt)return;
+  var o=window.drShareWA;
+  window.drShareWA=function(){
+    var prev=window.open;                       // window.open saat ini (native / override hulu)
+    window.open=function(u,f,w){                // cuma aktif SELAMA drShareWA jalan
+      try{
+        if(typeof u==='string' && /wa\.me|whatsapp\.com/i.test(u) && /[?&]text=/.test(u)){
+          u=u.replace(/([?&]text=)([^&]*)/,function(m,k,v){
+            var t=decodeURIComponent(v.replace(/\+/g,' ')), L=t.split(/\r?\n/), O=[], i;
+            for(i=0;i<L.length;i++){ if(/^\s*(grand\s+)?total\s*[:=]/i.test(L[i])) continue; O.push(L[i]); }
+            while(O.length && !O[O.length-1].trim()) O.pop();   // buang baris kosong menggantung
+            return k+encodeURIComponent(O.join('\n'));
+          });
+        }
+      }catch(e){}
+      return prev.call(window,u,f,w);
+    };
+    try{ return o.apply(this,arguments); }
+    finally{ window.open=prev; }                // restore, kode lain gak keganggu
+  };
+  window.drShareWA.__dnt=true;
+}
 wrap();
 var n=0,iv=setInterval(function(){wrap();n++;if(n>20)clearInterval(iv);},400);
 try{console.log('[HARIAN NO-TOTAL v1] baris TOTAL disaring dari teks WA (semua jalur)');}catch(_){}
 })();
 </script>
 <script>
-/* PATCH AC-FLIP v1: autocomplete barang flip ke atas saat keyboard buka (VisualViewport, mode-agnostic). Zero-search. Math identik versi lama, cuma format. */
+/* PATCH AC-FLIP v1: autocomplete barang flip ke atas saat keyboard buka (VisualViewport, mode-agnostic). Zero-search. */
 (function(){'use strict';
 if(window.__acFlip)return;window.__acFlip=true;
 var SEL='.autocomplete-list,[class*="autocomplete"]'; // <-- kalau class dropdown lo beda, ganti 1 string ini doang
 function vv(){return window.visualViewport||{height:window.innerHeight,offsetTop:window.scrollY};}
-function inputFor(ac){var a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')&&ac!==a)return a;var p=ac.parentElement;if(p){var i=p.querySelector('input,textarea');if(i)return i;}var s=ac.previousElementSibling;while(s){if(s.tagName==='INPUT'||s.tagName==='TEXTAREA')return s;s=s.previousElementSibling;}return null;}
-function place(ac){if(!ac||getComputedStyle(ac).display==='none')return;var inp=inputFor(ac);if(!inp)return;var v=vv();if(!v.height)return;var ir=inp.getBoundingClientRect();var relTop=ir.top-v.offsetTop,relBot=ir.bottom-v.offsetTop;var below=v.height-relBot,above=relTop;var want=Math.min(300,v.height*0.45);var flip=(below<want)&&(above>below);var st=ac.style;st.position='fixed';st.left=ir.left+'px';st.width=Math.max(ir.width,160)+'px';st.right='auto';st.margin='0';st.zIndex='99999';st.maxHeight=Math.max(80,(flip?above:below)-8)+'px';st.overflowY='auto';st.webkitOverflowScrolling='touch';if(flip){st.bottom=(window.innerHeight-ir.top+4)+'px';st.top='auto';}else{st.top=(ir.bottom+4)+'px';st.bottom='auto';}}
+function inputFor(ac){
+  var a=document.activeElement;
+  if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')&&ac!==a)return a;
+  var p=ac.parentElement;
+  if(p){var i=p.querySelector('input,textarea');if(i)return i;}
+  var s=ac.previousElementSibling;
+  while(s){if(s.tagName==='INPUT'||s.tagName==='TEXTAREA')return s;s=s.previousElementSibling;}
+  return null;
+}
+function place(ac){
+  if(!ac||getComputedStyle(ac).display==='none')return;
+  var inp=inputFor(ac);if(!inp)return;
+  var v=vv();if(!v.height)return;
+  var ir=inp.getBoundingClientRect();
+  var relTop=ir.top-v.offsetTop, relBot=ir.bottom-v.offsetTop;
+  var below=v.height-relBot, above=relTop;
+  var want=Math.min(300,v.height*0.45);
+  var flip=(below<want)&&(above>below);
+  var st=ac.style;
+  st.position='fixed';
+  st.left=ir.left+'px';
+  st.width=Math.max(ir.width,160)+'px';
+  st.right='auto';st.margin='0';st.zIndex='99999';
+  st.maxHeight=Math.max(80,(flip?above:below)-8)+'px';
+  st.overflowY='auto';st.webkitOverflowScrolling='touch';
+  if(flip){st.bottom=(window.innerHeight-ir.top+4)+'px';st.top='auto';}
+  else{st.top=(ir.bottom+4)+'px';st.bottom='auto';}
+}
 function sweep(){var n=document.querySelectorAll(SEL),i;for(i=0;i<n.length;i++)place(n[i]);}
 var q=false;function sched(){if(q)return;q=true;requestAnimationFrame(function(){q=false;sweep();});}
-function bind(){var v=window.visualViewport;if(v){v.addEventListener('resize',sched);v.addEventListener('scroll',sched);}window.addEventListener('scroll',sched,true);document.addEventListener('focusin',sched,true);document.addEventListener('input',sched,true);try{new MutationObserver(sched).observe(document.body,{childList:true,subtree:true});}catch(e){}sched();}
+function bind(){
+  var v=window.visualViewport;
+  if(v){v.addEventListener('resize',sched);v.addEventListener('scroll',sched);}
+  window.addEventListener('scroll',sched,true);
+  document.addEventListener('focusin',sched,true);
+  document.addEventListener('input',sched,true);
+  try{new MutationObserver(sched).observe(document.body,{childList:true,subtree:true});}catch(e){}
+  sched();
+}
 bind();
 var k=0,iv=setInterval(function(){sweep();k++;if(k>30)clearInterval(iv);},500);
 try{console.log('[AC-FLIP v1] autocomplete flip-aware keyboard aktif');}catch(e){}
