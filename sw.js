@@ -1,10 +1,10 @@
 /* ==========================================================
-   BIOLI OFFLINE SW — v8.6 (MINIMAL INSTALLABLE)
+   BIOLI OFFLINE SW — v8.7 (MINIMAL INSTALLABLE)
    - CORE cuma nyebut file yang PASTI ada (192 + 512 PNG)
    - Cache-first HTML + CDN => offline kebuka
    - version.json selalu tembus network (cek update akurat)
    ========================================================== */
-var CACHE = '8.6';
+var CACHE = '8.7';
 var NAV_KEY = './index.html'; // <-- GANTI kalau file utama lo bukan index.html
 var CORE = [
   './',
